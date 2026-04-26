@@ -1734,31 +1734,15 @@ function copyImg(){
     }).then(canvas=>{
       document.body.removeChild(wrapper);
 
-      if(isIOS()){
-        // iOS 14+: intentar copiar al portapapeles primero
-        canvas.toBlob(blob=>{
-          if(!blob){openIOSave(canvas);return;}
-          navigator.clipboard.write([new ClipboardItem({'image/png':blob})])
-            .then(()=>{
-              btn.textContent='✓ Copiada';
-              setTimeout(()=>{btn.textContent='Copiar imagen';btn.disabled=false;},2500);
-            })
-            .catch(e=>{openIOSave(canvas);});
-        },'image/png');
-      }
-
-      // Desktop Chrome: copiar al portapapeles
+      // Intentar copiar al portapapeles (funciona en PC/Mac)
       canvas.toBlob(blob=>{
-        if(!blob){btn.textContent='Copiar imagen';btn.disabled=false;return;}
+        if(!blob){openIOSave(canvas);return;}
         navigator.clipboard.write([new ClipboardItem({'image/png':blob})])
           .then(()=>{
             btn.textContent='✓ Copiada';
             setTimeout(()=>{btn.textContent='Copiar imagen';btn.disabled=false;},2500);
           })
-          .catch(e=>{
-            alert('No se pudo copiar: '+e.message);
-            btn.textContent='Copiar imagen';btn.disabled=false;
-          });
+          .catch(e=>{openIOSave(canvas);});
       },'image/png');
     }).catch(e=>{
       document.body.removeChild(wrapper);
