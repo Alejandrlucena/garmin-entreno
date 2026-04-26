@@ -921,28 +921,27 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
       var durStr=syn.dur_secs?secsToStr(syn.dur_secs):'';
       var fcDisp=isPillGroup?'<span class="fc-max-pill">'+syn.fc_max+'</span>':'<span style="color:#eaeaea;font-weight:700">'+syn.fc_max+'</span>';
 
-      // Deltas vs intervalo anterior
-      var prev=lastGroupSyn;
-      var dKmhH=prev?dKmh(syn.speed,prev.speed):'';
-      var dDistH=prev?Math.abs(syn.dist_km-prev.dist_km)*1000>=1?'<div class="sub dz" style="font-size:7.5px">'+(syn.dist_km>prev.dist_km?'+':syn.dist_km<prev.dist_km?'-':'')+Math.round(Math.abs(syn.dist_km-prev.dist_km)*1000)+'m</div>':'':'';
-      var dCadH=prev&&syn.cadencia&&prev.cadencia?_dCadRaw(syn.cadencia,prev.cadencia):'';
-      var dRitmoH=prev?dRitmo(syn.speed,prev.speed):'';
-      var dFCmH=prev?dFC(syn.fc_med,prev.fc_med):'';
-      var dFCxH=prev?dFC(syn.fc_max,prev.fc_max):'';
+        // Deltas vs intervalo anterior
+        var prev=lastGroupSyn;
+        var dKmhH=prev?dKmh(syn.speed,prev.speed):'';
+        var dCadH=prev&&syn.cadencia&&prev.cadencia?_dCadRaw(syn.cadencia,prev.cadencia):'';
+        var dRitmoH=prev?dRitmo(syn.speed,prev.speed):'';
+        var dFCmH=prev?dFC(syn.fc_med,prev.fc_med):'';
+        var dFCxH=prev?dFC(syn.fc_max,prev.fc_max):'';
 
-      rows+='<tr id="'+grpId+'" class="group-header" onclick="_toggleGroup(\''+grpId+'\')">'
-        +'<td><span class="group-arrow">▼</span>'
-        +'<span class="group-num">'+g.num+'</span>'
-        +'<span class="group-label">Intervalo</span>'
-        +'<span class="group-dur">'+durStr+'</span>'
-        +'</td>'
-        +'<td><div class="metric"><div class="main">'+syn.dist_km.toFixed(2)+' km</div>'+dDistH+'</div></td>'
-        +'<td><div class="metric"><div class="main">'+toKmh(syn.speed)+'</div>'+dKmhH+'</div></td>'
-        +'<td><div class="metric"><div class="main">'+(syn.cadencia||'—')+'</div>'+dCadH+'</div></td>'
-        +'<td><div class="metric"><div class="main">'+toRitmo(syn.speed)+'</div>'+dRitmoH+'</div></td>'
-        +'<td><div class="metric"><div class="main">'+syn.fc_med+'</div>'+dFCmH+'</div></td>'
-        +'<td><div class="metric"><div class="main">'+fcDisp+'</div>'+dFCxH+'</div></td>'
-        +zonaCellHtml(syn.zonas_lap)+'</tr>';
+       rows+='<tr id="'+grpId+'" class="group-header" onclick="_toggleGroup(\''+grpId+'\')">'
+         +'<td><span class="group-arrow">▼</span>'
+         +'<span class="group-num">'+g.num+'</span>'
+         +'<span class="group-label">Intervalo</span>'
+         +'<span class="group-dur">'+durStr+'</span>'
+         +'</td>'
+         +'<td><div class="metric"><div class="main">'+syn.dist_km.toFixed(2)+' km</div>'+elevHtml(syn.desnivel)+'</div></td>'
+         +'<td><div class="metric"><div class="main">'+toKmh(syn.speed)+'</div>'+dKmhH+'</div></td>'
+         +'<td><div class="metric"><div class="main">'+(syn.cadencia||'—')+'</div>'+dCadH+'</div></td>'
+         +'<td><div class="metric"><div class="main">'+toRitmo(syn.speed)+'</div>'+dRitmoH+'</div></td>'
+         +'<td><div class="metric"><div class="main">'+syn.fc_med+'</div>'+dFCmH+'</div></td>'
+         +'<td><div class="metric"><div class="main">'+fcDisp+'</div>'+dFCxH+'</div></td>'
+         +zonaCellHtml(syn.zonas_lap)+'</tr>';
 
       // Laps individuales
       g.laps.forEach(function(s){
