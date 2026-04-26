@@ -429,7 +429,7 @@ function zonaRange(nombre){return _zonaRangos[nombre]||'';}
 function dKmh(c,p){
   const d=parseFloat(((c>=0.3?c*3.6:0)-(p>=0.3?p*3.6:0)).toFixed(1));
   if(d===0||Math.abs(d)<0.9)return'<div class="sub dz">0</div>';
-  return`<div class="sub ${d>0?'dn':'dp'}">${d>0?'+':'-'}${d}</div>`;
+  return`<div class="sub ${d>0?'dn':'dp'}">${d>0?'+':'-'}${Math.abs(d)}</div>`;
 }
 function dKmhRaw(c,p){
   const d=parseFloat(((c>=0.3?c*3.6:0)-(p>=0.3?p*3.6:0)).toFixed(1));
