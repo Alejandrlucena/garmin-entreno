@@ -341,7 +341,7 @@ td:first-child:hover .hide-btn{color:#454a55}
 <div class="hr-zones-content" id="hr-zones-content" style="display:none;">
   <div class="hr-label">Método:</div>
   <select id="hr-method" onchange="toggleHRMethod()">
-    <option value="lactate" selected>% Umbral de lactato (ppm)</option>
+    <option value="lactate" selected>% Umbral de lactato</option>
     <option value="maxhr">% FC máxima</option>
     <option value="fcr">% FCR (Karvonen)</option>
     <option value="manual">Manual (min,max por zona)</option>
@@ -1740,7 +1740,7 @@ function _captureEl(callback){
   document.body.appendChild(wrapper);
 
   // iOS Safari has a max canvas size of ~16MP — use lower scale
-  const scale=isIOS()?1.5:8;
+  const scale=isIOS()?1.5:10;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
@@ -1797,7 +1797,6 @@ function copyImg(){
     }).then(canvas=>{
       document.body.removeChild(wrapper);
 
-      // Intentar copiar al portapapeles (funciona en PC/Mac)
       canvas.toBlob(blob=>{
         if(!blob){openIOSave(canvas);return;}
         navigator.clipboard.write([new ClipboardItem({'image/png':blob})])
