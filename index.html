@@ -1783,7 +1783,7 @@ function copyImg(){
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
-  const scale=isIOS()?1.5:3;
+  const scale=isIOS()?1.5:4;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
