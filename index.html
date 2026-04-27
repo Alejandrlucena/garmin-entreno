@@ -1733,13 +1733,14 @@ function _captureEl(callback){
   clone.querySelectorAll('.hide-btn').forEach(b=>b.remove());
 
   const wrapper=document.createElement('div');
+  wrapper.id='capture-wrapper-'+Date.now();
   wrapper.style.cssText='position:fixed;top:-99999px;left:0;background:#0b0c0f;padding:32px;'
-    +'width:auto;min-width:1400px;max-width:none;box-sizing:border-box;z-index:-9999;overflow:visible;';
+    +'width:1400px;max-width:1400px;box-sizing:border-box;z-index:-9999;overflow:visible;';
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
   // iOS Safari has a max canvas size of ~16MP — use lower scale
-  const scale=isIOS()?1.5:8.5;
+  const scale=isIOS()?1.5:8;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
@@ -1778,12 +1779,13 @@ function copyImg(){
   clone.querySelectorAll('.lbl').forEach(l=>{l.removeAttribute('contenteditable');l.style.borderBottom='none';l.style.cursor='default';});
 
   const wrapper=document.createElement('div');
+  wrapper.id='capture-wrapper-'+Date.now();
   wrapper.style.cssText='position:fixed;top:-99999px;left:0;background:#0b0c0f;padding:32px;'
-    +'width:auto;min-width:1400px;max-width:none;box-sizing:border-box;z-index:-9999;overflow:visible;';
+    +'width:1400px;max-width:1400px;box-sizing:border-box;z-index:-9999;overflow:visible;';
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
-  const scale=isIOS()?1.5:8.5;
+  const scale=isIOS()?1.5:8;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
