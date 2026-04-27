@@ -1739,7 +1739,7 @@ function _captureEl(callback){
   document.body.appendChild(wrapper);
 
   // iOS Safari has a max canvas size of ~16MP — use lower scale
-  const scale=isIOS()?1.5:8;
+  const scale=isIOS()?1.5:8.5;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
@@ -1752,7 +1752,7 @@ function _captureEl(callback){
       width:w,height:h,
       windowWidth:w,windowHeight:h,
       scrollX:0,scrollY:0,
-      allowTaint:false,imageTimeout:0
+      allowTaint:false,imageTimeout:0,letterRendering:true
     }).then(canvas=>{
       document.body.removeChild(wrapper);
       callback(canvas);
@@ -1783,7 +1783,7 @@ function copyImg(){
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
-  const scale=isIOS()?1.5:8;
+  const scale=isIOS()?1.5:8.5;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
@@ -1791,7 +1791,7 @@ function copyImg(){
     html2canvas(wrapper,{
       backgroundColor:'#0b0c0f',scale,useCORS:true,logging:false,
       width:w,height:h,windowWidth:w,windowHeight:h,
-      scrollX:0,scrollY:0,allowTaint:false,imageTimeout:0
+      scrollX:0,scrollY:0,allowTaint:false,imageTimeout:0,letterRendering:true
     }).then(canvas=>{
       document.body.removeChild(wrapper);
 
