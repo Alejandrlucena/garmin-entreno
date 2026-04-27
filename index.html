@@ -1743,6 +1743,7 @@ function _captureEl(callback){
   const scale=isIOS()?1.5:8;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    setTimeout(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
     const h=wrapper.scrollHeight+64;
     html2canvas(wrapper,{
@@ -1760,6 +1761,7 @@ function _captureEl(callback){
     }).catch(e=>{
       document.body.removeChild(wrapper);
       alert('Error al capturar: '+e.message);
+    });
     });
   }));
 }
@@ -1788,6 +1790,7 @@ function copyImg(){
   const scale=isIOS()?1.5:8;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    setTimeout(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
     const h=wrapper.scrollHeight+64;
     html2canvas(wrapper,{
@@ -1811,6 +1814,7 @@ function copyImg(){
       document.body.removeChild(wrapper);
       alert('Error: '+e.message);
       btn.textContent='Copiar imagen';btn.disabled=false;
+    });
     });
   }));
 }
