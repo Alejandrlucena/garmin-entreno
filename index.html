@@ -1743,6 +1743,7 @@ function _captureEl(callback){
   const scale=isIOS()?1.5:8;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.fonts.ready.then(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
     const h=wrapper.scrollHeight+64;
     html2canvas(wrapper,{
@@ -1753,13 +1754,14 @@ function _captureEl(callback){
       width:w,height:h,
       windowWidth:w,windowHeight:h,
       scrollX:0,scrollY:0,
-      allowTaint:false,imageTimeout:0,letterRendering:true
+      allowTaint:false,imageTimeout:0,letterRendering:true,foreignObjectRendering:true
     }).then(canvas=>{
       document.body.removeChild(wrapper);
       callback(canvas);
     }).catch(e=>{
       document.body.removeChild(wrapper);
       alert('Error al capturar: '+e.message);
+    });
     });
   }));
 }
@@ -1788,12 +1790,13 @@ function copyImg(){
   const scale=isIOS()?1.5:8;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.fonts.ready.then(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+64;
     const h=wrapper.scrollHeight+64;
     html2canvas(wrapper,{
       backgroundColor:'#0b0c0f',scale,useCORS:true,logging:false,
       width:w,height:h,windowWidth:w,windowHeight:h,
-      scrollX:0,scrollY:0,allowTaint:false,imageTimeout:0,letterRendering:true
+      scrollX:0,scrollY:0,allowTaint:false,imageTimeout:0,letterRendering:true,foreignObjectRendering:true
     }).then(canvas=>{
       document.body.removeChild(wrapper);
 
@@ -1811,6 +1814,7 @@ function copyImg(){
       document.body.removeChild(wrapper);
       alert('Error: '+e.message);
       btn.textContent='Copiar imagen';btn.disabled=false;
+    });
     });
   }));
 }
