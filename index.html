@@ -227,6 +227,9 @@ tr.step-summary td{
 tr.step-summary td:first-child{box-shadow:inset 4px 0 0 rgba(126,217,87,.92)}
 tr.step-summary .main,tr.step-summary .group-label,tr.step-summary .group-dur{color:#f3f8ec!important}
 tr.step-summary .sub,tr.step-summary .elev{color:rgba(220,235,210,.62)!important}
+tr.step-summary .sub.dp,tr.step-summary .elev.dp{color:#ff5a4f!important}
+tr.step-summary .sub.dn,tr.step-summary .elev.dn{color:#2ee88b!important}
+tr.step-summary .sub.dg,tr.step-summary .elev.dg{color:#6a7280!important}
 tr.step-summary .group-arrow{color:rgba(126,217,87,.9)!important}
 tr.step-summary:hover td{background:#142229!important}
 .hide-btn{
@@ -582,6 +585,18 @@ function elevHtml(v){
   if(n===0)return'';
   return n>0?`<div class="elev dp">▲ +${n}m</div>`:`<div class="elev dn">▼ ${Math.abs(n)}m</div>`;
 }
+function dElev(v,p,isDesc){
+  var n=parseInt(v)||0,prev=parseInt(p)||0;
+  var d=n-prev;
+  if(d===0)return'';
+  var cls=isDesc?'dg':(d>0?'dp':'dn');
+  var st=isDesc?' style="opacity:0.2"':'';
+  return d>0?'<div class="elev '+cls+'"'+st+'>▲ +'+d+'m</div>':'<div class="elev '+cls+'"'+st+'>▼ '+Math.abs(d)+'m</div>';
+}
+function distElevHtml(distDelta,elevDelta,actualElev,hasRef){
+  if(hasRef)return (distDelta||'')+(elevDelta||(!distDelta?elevHtml(actualElev):''));
+  return elevHtml(actualElev);
+}
 function cellPlain(v,ev){
   return`<td><div class="metric"><div class="main">${v}</div>${ev!==undefined?elevHtml(ev):''}</div></td>`;
 }
@@ -893,12 +908,14 @@ var allR=[];
       var fcMaxVal=s.fc_max>0?s.fc_max:'';
       var distDisplay=distVal>=0?(distVal>0?distVal.toFixed(2)+' km':'0.00 km'):'';
       var distDelta=hasRef&&distDisplay?dDist(distVal,ref.dist_km,true):'';
-      var elevDisplay=distDisplay?distDelta+elevHtml(s.desnivel):'';
-    var rowClassDesc=isDesc?' desc-row':'';
-    var descStyle=isDesc?'style="color:#252830"':'';
-    var restTimeStyle=isDesc?' style="color:#252830"':'';
-    var _extraCells=esIntervalos
-      ?'<td class="col-lap" style="color:#6a7280;font-weight:700;font-size:11px">'+_vuelta+'</td>'
+      var elevDelta=hasRef?dElev(s.desnivel,ref.desnivel,true):'';
+      var elevDisplay=distDisplay?distElevHtml(distDelta,elevDelta,s.desnivel,hasRef):'';
+      var rowClassDesc=isDesc?' desc-row':'';
+      var descStyle=isDesc?'style="color:#252830"':'';
+      var restTimeStyle=isDesc?' style="color:#252830"':'';
+      var restLapColor=isDesc?'#252830':'#6a7280';
+      var _extraCells=esIntervalos
+      ?'<td class="col-lap" style="color:'+restLapColor+';font-weight:700;font-size:11px">'+_vuelta+'</td>'
         +'<td class="col-time"><div class="metric"><div class="main"'+restTimeStyle+'>'+secsToStepStr(_thisDur)+'</div></div></td>'
         +'<td class="col-cum-time"><div class="metric"><div class="main" style="font-size:10px;color:'+(isDesc?'#252830':'#5a6070')+'">'+_cumDisplay+'</div></div></td>'
       :'';
@@ -920,7 +937,7 @@ var allR=[];
             +'<td class="col-time"><div class="metric"><div class="main">'+secsToStepStr(_thisDur)+'</div></div></td>'
             +'<td class="col-cum-time"><div class="metric"><div class="main" style="font-size:10px;color:#5a6070">'+_cumDisplay+'</div></div></td>'
           :'')
-        +'<td><div class="metric"><div class="main">'+s.dist_km.toFixed(2)+' km</div>'+(hasRef?dDist(s.dist_km,ref.dist_km,false):'')+elevHtml(s.desnivel)+'</div></td>'
+        +'<td><div class="metric"><div class="main">'+s.dist_km.toFixed(2)+' km</div>'+distElevHtml((hasRef?dDist(s.dist_km,ref.dist_km,false):''),(hasRef?dElev(s.desnivel,ref.desnivel,false):''),s.desnivel,hasRef)+'</div></td>'
         +'<td><div class="metric"><div class="main">'+toKmh(s.speed)+'</div>'+(hasRef?dKmh(s.speed,ref.speed):'')+'</div></td>'
         +_cadCell(s.cadencia,hasRef?ref.cadencia:0,false)
         +'<td><div class="metric"><div class="main">'+toRitmo(s.speed)+'</div>'+(hasRef?dRitmo(s.speed,ref.speed):'')+'</div></td>'
@@ -975,6 +992,7 @@ var allR=[];
     var firstCell=(canToggle?'<span class="group-arrow">▼</span>':'')+label;
     var hasRef=!!ref;
     var distDelta=hasRef?dDist(s.dist_km,ref.dist_km,false):'';
+    var elevDelta=hasRef?dElev(s.desnivel,ref.desnivel,false):'';
     var dKmhH=hasRef?dKmh(s.speed,ref.speed):'';
     var dCadH=hasRef&&s.cadencia&&ref.cadencia?_dCadRaw(s.cadencia,ref.cadencia):'';
     var dRitmoH=hasRef?dRitmo(s.speed,ref.speed):'';
@@ -985,7 +1003,7 @@ var allR=[];
       +'<td class="col-lap" style="font-weight:600">'+(s.vuelta||'')+'</td>'
       +'<td class="col-time"><div class="metric"><div class="main">'+(dur?secsToStr(dur):'—')+'</div></div></td>'
       +'<td class="col-cum-time"><div class="metric"><div class="main">'+(cumSecs?secsToStr(cumSecs):'—')+'</div></div></td>'
-      +'<td><div class="metric"><div class="main">'+s.dist_km.toFixed(2)+' km</div>'+distDelta+elevHtml(s.desnivel)+'</div></td>'
+      +'<td><div class="metric"><div class="main">'+s.dist_km.toFixed(2)+' km</div>'+distElevHtml(distDelta,elevDelta,s.desnivel,hasRef)+'</div></td>'
       +'<td><div class="metric"><div class="main">'+toKmh(s.speed)+'</div>'+dKmhH+'</div></td>'
       +'<td><div class="metric"><div class="main">'+(s.cadencia||'—')+'</div>'+dCadH+'</div></td>'
       +'<td><div class="metric"><div class="main">'+toRitmo(s.speed)+'</div>'+dRitmoH+'</div></td>'
