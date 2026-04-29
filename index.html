@@ -1882,8 +1882,9 @@ function render(){
 function isIOS(){
   return/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 }
-function captureScale(){
-  return isIOS()?1.5:2.5;
+function captureScale(forDrive){
+  if(isIOS())return 1.5;
+  return forDrive?2.5:8;
 }
 function captureFileBaseName(){
   const lbls=document.querySelectorAll('#render-target .lbl');
@@ -1986,6 +1987,7 @@ function saveImg(){
 
 /* ── DRIVE LINK ── */
 const DRIVE_UPLOAD_URL_KEY='garminDriveUploadUrl';
+const DRIVE_DEFAULT_URL='https://script.google.com/macros/s/AKfycbwSNYHGTdt-0HjJi4pzqWpLPFYuab6QHND3Mzqe3E1QDgNhn3aGMsQo1rg99kSfh_bn/exec';
 
 function configureDriveUpload(){
   const currentUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
@@ -1999,19 +2001,15 @@ function configureDriveUpload(){
 
 function getImageLink(){
   const btn=document.getElementById('btn-link-img');
-  let uploadUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
-  if(!uploadUrl){
-    if(!configureDriveUpload())return;
-    uploadUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
-    if(!uploadUrl)return;
-  }
+  let uploadUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||DRIVE_DEFAULT_URL;
   const origText=btn.textContent;
   btn.textContent='Generando...';
   btn.disabled=true;
 
   _captureEl(canvas=>{
     btn.textContent='Subiendo...';
-    const base64=canvas.toDataURL('image/jpeg',0.90).split(',')[1]||'';
+
+    const base64=canvas.toDataURL('image/jpeg',0.88).split(',')[1]||'';
     const fileName=captureFileBaseName()+'.jpg';
     fetch(uploadUrl,{
       method:'POST',
@@ -2042,11 +2040,11 @@ function getImageLink(){
       alert('Error al subir:\n\n'+err.message
         +'\n\nComprueba:\n• El script está desplegado como Web App\n• Ejecutar como: Tú\n• Acceso: Cualquier usuario\n\nPara cambiar la URL: localStorage.removeItem("garminDriveUploadUrl")');
     });
-  });
+  }, true); // escala reducida solo para Drive
 }
 
-/* ── SHARED CAPTURE (Drive-preview friendly, safe on iOS) ── */
-function _captureEl(callback){
+/* ── SHARED CAPTURE ── */
+function _captureEl(callback, forDrive){
   const el=document.getElementById('render-target');
   if(!el)return;
   const clone=el.cloneNode(true);
@@ -2063,8 +2061,7 @@ function _captureEl(callback){
   document.body.appendChild(wrapper);
   _prepareCaptureWrapper(wrapper, clone);
 
-  // Keep output sharp without creating huge files that Drive cannot preview.
-  const scale=captureScale();
+  const scale=captureScale(forDrive);
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     setTimeout(()=>{
