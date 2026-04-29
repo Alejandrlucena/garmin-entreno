@@ -1986,85 +1986,15 @@ function saveImg(){
 
 /* ── DRIVE LINK ── */
 const DRIVE_UPLOAD_URL_KEY='garminDriveUploadUrl';
-const DRIVE_UPLOAD_SECRET_KEY='garminDriveUploadSecret';
 
 function configureDriveUpload(){
   const currentUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
-  const url=prompt('Pega aqui la URL de la Web App de Google Apps Script. Si lo dejas vacio, borro la configuracion.',currentUrl);
+  const url=prompt('Pega la URL del Google Apps Script (termina en /exec). Déjalo vacío para borrar.',currentUrl);
   if(url===null)return !!currentUrl;
   const cleanUrl=url.trim();
   if(cleanUrl)localStorage.setItem(DRIVE_UPLOAD_URL_KEY,cleanUrl);
   else localStorage.removeItem(DRIVE_UPLOAD_URL_KEY);
-
-  const currentSecret=localStorage.getItem(DRIVE_UPLOAD_SECRET_KEY)||'';
-  const secret=prompt('Clave secreta opcional. Tiene que coincidir con UPLOAD_SECRET del Apps Script. Si lo dejas vacio, no usa clave.',currentSecret);
-  if(secret!==null){
-    const cleanSecret=secret.trim();
-    if(cleanSecret)localStorage.setItem(DRIVE_UPLOAD_SECRET_KEY,cleanSecret);
-    else localStorage.removeItem(DRIVE_UPLOAD_SECRET_KEY);
-  }
-
-  alert(cleanUrl?'Drive configurado. Ahora puedes usar "Obtener link".':'Configuracion de Drive borrada.');
   return !!cleanUrl;
-}
-
-function submitDriveUpload(uploadUrl,payload){
-  return new Promise((resolve,reject)=>{
-    const uploadId='garmin_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    const frameName='drive_upload_'+uploadId;
-    payload.uploadId=uploadId;
-
-    const iframe=document.createElement('iframe');
-    iframe.name=frameName;
-    iframe.style.display='none';
-
-    const form=document.createElement('form');
-    form.method='POST';
-    form.action=uploadUrl;
-    form.target=frameName;
-    form.enctype='application/x-www-form-urlencoded';
-    form.style.display='none';
-
-    const input=document.createElement('textarea');
-    input.name='payload';
-    input.value=JSON.stringify(payload);
-    form.appendChild(input);
-
-    let timer=null;
-    const cleanup=()=>{
-      window.removeEventListener('message',onMessage);
-      clearTimeout(timer);
-      if(form.parentNode)form.parentNode.removeChild(form);
-      if(iframe.parentNode)iframe.parentNode.removeChild(iframe);
-    };
-    const onMessage=(event)=>{
-      const data=event.data||{};
-      if(!data||data.source!=='garmin-drive-upload'||data.uploadId!==uploadId)return;
-      cleanup();
-      if(data.ok)resolve(data);
-      else reject(new Error(data.error||'Google Drive no devolvio un link.'));
-    };
-
-    window.addEventListener('message',onMessage);
-    timer=setTimeout(()=>{
-      cleanup();
-      reject(new Error('La subida ha tardado demasiado. Revisa que la URL de Apps Script este desplegada como Web App.'));
-    },120000);
-
-    document.body.appendChild(iframe);
-    document.body.appendChild(form);
-    form.submit();
-  });
-}
-
-function copyLinkOrShow(url){
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    return navigator.clipboard.writeText(url)
-      .then(()=>alert('Link copiado al portapapeles:\n\n'+url))
-      .catch(()=>prompt('Copia este link:',url));
-  }
-  prompt('Copia este link:',url);
-  return Promise.resolve();
 }
 
 function getImageLink(){
@@ -2073,35 +2003,45 @@ function getImageLink(){
   if(!uploadUrl){
     if(!configureDriveUpload())return;
     uploadUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
+    if(!uploadUrl)return;
   }
-  const secret=localStorage.getItem(DRIVE_UPLOAD_SECRET_KEY)||'';
+  const origText=btn.textContent;
   btn.textContent='Generando...';
   btn.disabled=true;
 
   _captureEl(canvas=>{
     btn.textContent='Subiendo...';
-    canvasToBlobPromise(canvas,'image/jpeg',0.90)
-      .then(blob=>{
-        if(!blob)throw new Error('No se pudo crear el JPG.');
-        return blobToDataUrl(blob);
-      })
-      .then(dataUrl=>{
-        const base64=String(dataUrl).split(',')[1]||'';
-        return submitDriveUpload(uploadUrl,{
-          secret:secret,
-          fileName:captureFileBaseName()+'.jpg',
-          mimeType:'image/jpeg',
-          data:base64
-        });
-      })
-      .then(data=>copyLinkOrShow(data.url))
-      .catch(err=>{
-        alert('No pude obtener el link:\n\n'+err.message+'\n\nSi acabas de crear el Apps Script, revisa que este desplegado como Web App y con acceso "Anyone".');
-      })
-      .finally(()=>{
-        btn.textContent='Obtener link';
+    const base64=canvas.toDataURL('image/jpeg',0.90).split(',')[1]||'';
+    const fileName=captureFileBaseName()+'.jpg';
+    fetch(uploadUrl,{
+      method:'POST',
+      body:JSON.stringify({data:base64,fileName:fileName,mimeType:'image/jpeg'})
+    })
+    .then(r=>{
+      if(!r.ok&&r.status!==0)throw new Error('HTTP '+r.status);
+      return r.json();
+    })
+    .then(result=>{
+      if(!result.ok&&!result.url)throw new Error(result.error||'El script no devolvió URL.');
+      const url=result.url;
+      const finish=(copied)=>{
+        btn.textContent=copied?'✓ Link copiado':'Obtener link';
         btn.disabled=false;
-      });
+        if(!copied)prompt('Copia este link:',url);
+        else setTimeout(()=>{btn.textContent=origText;},2500);
+      };
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(()=>finish(true)).catch(()=>finish(false));
+      } else {
+        finish(false);
+      }
+    })
+    .catch(err=>{
+      btn.textContent=origText;
+      btn.disabled=false;
+      alert('Error al subir:\n\n'+err.message
+        +'\n\nComprueba:\n• El script está desplegado como Web App\n• Ejecutar como: Tú\n• Acceso: Cualquier usuario\n\nPara cambiar la URL: localStorage.removeItem("garminDriveUploadUrl")');
+    });
   });
 }
 
