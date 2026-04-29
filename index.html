@@ -391,9 +391,7 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
   <button class="prompt-toggle" onclick="toggleHRZones()" style="margin-left:8px;">
     <span>⚡ Zonas FC</span>
   </button>
-  <button class="prompt-toggle" onclick="configureDriveUpload()" style="margin-left:8px;">
-    <span>Drive link</span>
-  </button>
+
   <button class="prompt-toggle" onclick="togglePrompt()" style="margin-left:8px;display:none">
     <span class="prompt-toggle-arrow" id="toggle-arrow">▶</span>
     <span>Prompt</span>
@@ -1977,8 +1975,8 @@ function saveImg(){
       }
     } else {
       const link=document.createElement('a');
-      link.download=captureFileBaseName()+'.jpg';
-      link.href=canvas.toDataURL('image/jpeg',0.92);
+      link.download=captureFileBaseName()+'.png';
+      link.href=canvas.toDataURL('image/png');
       link.click();
     }
     btn.textContent='Generar imagen';btn.disabled=false;
