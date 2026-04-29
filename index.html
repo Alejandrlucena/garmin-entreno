@@ -38,6 +38,7 @@ body{background:#0b0c0f;color:#eaeaea;font-family:-apple-system,BlinkMacSystemFo
 .btn-render{background:linear-gradient(135deg,#1e4d1e,#2a6a2a);border-color:#3a8a3a;color:#7eff7e;box-shadow:0 1px 8px rgba(74,222,128,.15)}
 .btn-img  {background:#141826;border-color:#2a3450;color:#7aafff;font-size:clamp(10px,2.5vw,12px)}
 .btn-copy-img{background:#141826;border-color:#2a3450;color:#a78bfa;font-size:clamp(10px,2.5vw,12px)}
+.btn-link-img{background:#10201c;border-color:#1f4c42;color:#5eead4;font-size:clamp(10px,2.5vw,12px)}
 .btn-fit  {background:#0d1a14;border-color:#1a3a28;color:#4ade80;font-size:clamp(10px,2.5vw,12px)}
 .btn-clear{background:#180f0f;border-color:#3a1a1a;color:#e74c3c}
 .btn-copy {background:#1a1b20;border-color:#2a2b32;color:#9aa0a6}
@@ -45,7 +46,7 @@ body{background:#0b0c0f;color:#eaeaea;font-family:-apple-system,BlinkMacSystemFo
 /* ── ACTION ROWS ── */
 .action-row-main{display:flex;flex-wrap:wrap;gap:6px;width:100%}
 .btn-render{flex:1 1 60%;min-width:120px}
-.btn-img,.btn-copy-img{flex:1 1 40%;min-width:100px}
+.btn-img,.btn-copy-img,.btn-link-img{flex:1 1 30%;min-width:100px}
 .btn-clear{flex:0 0 44px;width:44px}
 .action-row-filter{display:none;margin-top:8px;gap:6px;align-items:center}
 .action-row-filter.visible{display:flex}
@@ -363,6 +364,7 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
       <input type="file" id="fit-input" accept=".fit,.zip" multiple style="display:none" onchange="loadFitOrZip(this)">
       <button class="btn btn-img" id="btn-img" onclick="saveImg()" style="display:none">Generar imagen</button>
       <button class="btn btn-copy-img" id="btn-copy-img" onclick="copyImg()" style="display:none">Copiar imagen</button>
+      <button class="btn btn-link-img" id="btn-link-img" onclick="getImageLink()" style="display:none">Obtener link</button>
       <button class="btn btn-clear" onclick="clearJson()">✕</button>
     </div>
     <div class="action-row-filter" id="filter-bar">
@@ -388,6 +390,9 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
   </a>
   <button class="prompt-toggle" onclick="toggleHRZones()" style="margin-left:8px;">
     <span>⚡ Zonas FC</span>
+  </button>
+  <button class="prompt-toggle" onclick="configureDriveUpload()" style="margin-left:8px;">
+    <span>Drive link</span>
   </button>
   <button class="prompt-toggle" onclick="togglePrompt()" style="margin-left:8px;display:none">
     <span class="prompt-toggle-arrow" id="toggle-arrow">▶</span>
@@ -1865,6 +1870,7 @@ function render(){
   document.getElementById('output').innerHTML=`<div id="render-target">${lista.map(renderActividad).join('')}</div>`;
   document.getElementById('btn-img').style.display='inline-flex';
   document.getElementById('btn-copy-img').style.display='inline-flex';
+  document.getElementById('btn-link-img').style.display='inline-flex';
   document.getElementById('filter-bar').classList.add('visible');
   // En móvil, scroll al output
   if(window.innerWidth<900){
@@ -1876,9 +1882,28 @@ function render(){
 function isIOS(){
   return/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 }
+function captureScale(){
+  return isIOS()?1.5:2.5;
+}
+function captureFileBaseName(){
+  const lbls=document.querySelectorAll('#render-target .lbl');
+  return (lbls.length===1?lbls[0].textContent.replace(/[^a-z0-9]/gi,'_').toLowerCase():'entrenos_'+lbls.length)
+    .replace(/_+/g,'_').replace(/^_|_$/g,'') || 'garmin_entreno';
+}
+function canvasToBlobPromise(canvas,type,quality){
+  return new Promise(resolve=>canvas.toBlob(resolve,type,quality));
+}
+function blobToDataUrl(blob){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(reader.error||new Error('No se pudo leer la imagen.'));
+    reader.readAsDataURL(blob);
+  });
+}
 function openIOSave(canvas){
   let dataUrl='';
-  try{dataUrl=canvas.toDataURL('image/png');}catch(e){
+  try{dataUrl=canvas.toDataURL('image/jpeg',0.92);}catch(e){
     alert('Imagen demasiado grande. Usa "Generar imagen" con menos actividades.');
     return;
   }
@@ -1930,7 +1955,7 @@ function saveImg(){
   _captureEl(canvas=>{
     if(isIOS()){
       let dataUrl='';
-      try{dataUrl=canvas.toDataURL('image/png');}catch(e){
+      try{dataUrl=canvas.toDataURL('image/jpeg',0.92);}catch(e){
         alert('La imagen es demasiado grande para Safari. Prueba con menos actividades a la vez.');
         btn.textContent='Generar imagen';btn.disabled=false;return;
       }
@@ -1951,16 +1976,136 @@ function saveImg(){
       }
     } else {
       const link=document.createElement('a');
-      const lbls=document.querySelectorAll('#render-target .lbl');
-      link.download=(lbls.length===1?lbls[0].textContent.replace(/[^a-z0-9]/gi,'_').toLowerCase():'entrenos_'+lbls.length)+'.png';
-      link.href=canvas.toDataURL('image/png');
+      link.download=captureFileBaseName()+'.jpg';
+      link.href=canvas.toDataURL('image/jpeg',0.92);
       link.click();
     }
     btn.textContent='Generar imagen';btn.disabled=false;
   });
 }
 
-/* ── SHARED CAPTURE (4K on desktop, safe on iOS) ── */
+/* ── DRIVE LINK ── */
+const DRIVE_UPLOAD_URL_KEY='garminDriveUploadUrl';
+const DRIVE_UPLOAD_SECRET_KEY='garminDriveUploadSecret';
+
+function configureDriveUpload(){
+  const currentUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
+  const url=prompt('Pega aqui la URL de la Web App de Google Apps Script. Si lo dejas vacio, borro la configuracion.',currentUrl);
+  if(url===null)return !!currentUrl;
+  const cleanUrl=url.trim();
+  if(cleanUrl)localStorage.setItem(DRIVE_UPLOAD_URL_KEY,cleanUrl);
+  else localStorage.removeItem(DRIVE_UPLOAD_URL_KEY);
+
+  const currentSecret=localStorage.getItem(DRIVE_UPLOAD_SECRET_KEY)||'';
+  const secret=prompt('Clave secreta opcional. Tiene que coincidir con UPLOAD_SECRET del Apps Script. Si lo dejas vacio, no usa clave.',currentSecret);
+  if(secret!==null){
+    const cleanSecret=secret.trim();
+    if(cleanSecret)localStorage.setItem(DRIVE_UPLOAD_SECRET_KEY,cleanSecret);
+    else localStorage.removeItem(DRIVE_UPLOAD_SECRET_KEY);
+  }
+
+  alert(cleanUrl?'Drive configurado. Ahora puedes usar "Obtener link".':'Configuracion de Drive borrada.');
+  return !!cleanUrl;
+}
+
+function submitDriveUpload(uploadUrl,payload){
+  return new Promise((resolve,reject)=>{
+    const uploadId='garmin_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const frameName='drive_upload_'+uploadId;
+    payload.uploadId=uploadId;
+
+    const iframe=document.createElement('iframe');
+    iframe.name=frameName;
+    iframe.style.display='none';
+
+    const form=document.createElement('form');
+    form.method='POST';
+    form.action=uploadUrl;
+    form.target=frameName;
+    form.enctype='application/x-www-form-urlencoded';
+    form.style.display='none';
+
+    const input=document.createElement('textarea');
+    input.name='payload';
+    input.value=JSON.stringify(payload);
+    form.appendChild(input);
+
+    let timer=null;
+    const cleanup=()=>{
+      window.removeEventListener('message',onMessage);
+      clearTimeout(timer);
+      if(form.parentNode)form.parentNode.removeChild(form);
+      if(iframe.parentNode)iframe.parentNode.removeChild(iframe);
+    };
+    const onMessage=(event)=>{
+      const data=event.data||{};
+      if(!data||data.source!=='garmin-drive-upload'||data.uploadId!==uploadId)return;
+      cleanup();
+      if(data.ok)resolve(data);
+      else reject(new Error(data.error||'Google Drive no devolvio un link.'));
+    };
+
+    window.addEventListener('message',onMessage);
+    timer=setTimeout(()=>{
+      cleanup();
+      reject(new Error('La subida ha tardado demasiado. Revisa que la URL de Apps Script este desplegada como Web App.'));
+    },120000);
+
+    document.body.appendChild(iframe);
+    document.body.appendChild(form);
+    form.submit();
+  });
+}
+
+function copyLinkOrShow(url){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(url)
+      .then(()=>alert('Link copiado al portapapeles:\n\n'+url))
+      .catch(()=>prompt('Copia este link:',url));
+  }
+  prompt('Copia este link:',url);
+  return Promise.resolve();
+}
+
+function getImageLink(){
+  const btn=document.getElementById('btn-link-img');
+  let uploadUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
+  if(!uploadUrl){
+    if(!configureDriveUpload())return;
+    uploadUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
+  }
+  const secret=localStorage.getItem(DRIVE_UPLOAD_SECRET_KEY)||'';
+  btn.textContent='Generando...';
+  btn.disabled=true;
+
+  _captureEl(canvas=>{
+    btn.textContent='Subiendo...';
+    canvasToBlobPromise(canvas,'image/jpeg',0.90)
+      .then(blob=>{
+        if(!blob)throw new Error('No se pudo crear el JPG.');
+        return blobToDataUrl(blob);
+      })
+      .then(dataUrl=>{
+        const base64=String(dataUrl).split(',')[1]||'';
+        return submitDriveUpload(uploadUrl,{
+          secret:secret,
+          fileName:captureFileBaseName()+'.jpg',
+          mimeType:'image/jpeg',
+          data:base64
+        });
+      })
+      .then(data=>copyLinkOrShow(data.url))
+      .catch(err=>{
+        alert('No pude obtener el link:\n\n'+err.message+'\n\nSi acabas de crear el Apps Script, revisa que este desplegado como Web App y con acceso "Anyone".');
+      })
+      .finally(()=>{
+        btn.textContent='Obtener link';
+        btn.disabled=false;
+      });
+  });
+}
+
+/* ── SHARED CAPTURE (Drive-preview friendly, safe on iOS) ── */
 function _captureEl(callback){
   const el=document.getElementById('render-target');
   if(!el)return;
@@ -1978,8 +2123,8 @@ function _captureEl(callback){
   document.body.appendChild(wrapper);
   _prepareCaptureWrapper(wrapper, clone);
 
-  // iOS Safari has a max canvas size of ~16MP — use lower scale
-  const scale=isIOS()?1.5:8;
+  // Keep output sharp without creating huge files that Drive cannot preview.
+  const scale=captureScale();
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     setTimeout(()=>{
@@ -2006,7 +2151,7 @@ function _captureEl(callback){
 }
 
 
-/* ── COPY IMAGE TO CLIPBOARD (4K) ── */
+/* ── COPY IMAGE TO CLIPBOARD ── */
 function copyImg(){
   const btn=document.getElementById('btn-copy-img');
   btn.textContent='Generando...';btn.disabled=true;
@@ -2027,7 +2172,7 @@ function copyImg(){
   document.body.appendChild(wrapper);
   _prepareCaptureWrapper(wrapper, clone);
 
-  const scale=isIOS()?1.5:8;
+  const scale=captureScale();
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     setTimeout(()=>{
@@ -2082,6 +2227,7 @@ function clearJson(){
   </div>`;
   document.getElementById('btn-img').style.display='none';
   document.getElementById('btn-copy-img').style.display='none';
+  document.getElementById('btn-link-img').style.display='none';
   document.getElementById('filter-bar').classList.remove('visible');
   document.getElementById('filter-input').value='';
   document.getElementById('error-msg').style.display='none';
