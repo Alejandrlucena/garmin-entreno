@@ -2041,8 +2041,8 @@ function fitToGarminJson(fitData, filename) {
     var threshHR = zt.thresholdHeartRate || zt.threshold_heart_rate || 0;
     var restHR = session.restingHeartRate || session.resting_heart_rate || 0;
     if (hrCalcType === 3 && threshHR > 0) {
-      /* percent_lt: Garmin value 3 (not in standard SDK enum) — zones relative to lactate threshold HR */
-      bounds = [1, 0.68, 0.83, 0.94, 1.05].map(function(p, i){ return i === 0 ? 1 : Math.round(threshHR * p); });
+      /* percent_lt: Garmin value 3 — Garmin's fixed zone splits: 58/68/80/91/102% of LT HR */
+      bounds = [0.58, 0.68, 0.80, 0.91, 1.02].map(function(p){ return Math.round(threshHR * p); });
     } else if ((hrCalcType === 2 || hrCalcType === 'percent_hrr') && restHR > 0 && maxHR > restHR) {
       /* percent_hrr: Karvonen — zones as % of heart rate reserve */
       var hrr = maxHR - restHR;
