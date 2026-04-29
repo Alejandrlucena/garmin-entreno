@@ -168,8 +168,8 @@ td.td-zona{padding-left:40px;padding-right:4px;min-width:130px;text-align:right}
 .fc-gen-pill{background:#252830;color:#9aa0ae}
 
 /* ── ROW TYPES ── */
-tr.avg-row td{background:rgba(255,255,255,.03);font-weight:500;color:#eaeaea}
-tr.avg-act td{
+tr.avg-row,tr.avg-row td{background:#101216!important;font-weight:500;color:#eaeaea}
+tr.avg-act,tr.avg-act td{
   background:#102126!important;
   border-top:1px solid rgba(45,212,191,.32);
   border-bottom:1px solid rgba(45,212,191,.18);
@@ -218,7 +218,7 @@ tr.phase-header td{
   color:#7a8a9e;font-weight:600;font-size:11px;
   border-bottom:.5px solid #1a1b22;border-top:.5px solid #1a1b22}
 tr.phase-header td:first-child{padding-left:4px}
-tr.step-summary td{
+tr.step-summary,tr.step-summary td{
   background:#101a1f!important;
   color:#f3f8ec!important;
   font-weight:700;
@@ -1875,6 +1875,34 @@ function openIOSave(canvas){
     alert('Permite las ventanas emergentes en Safari.');
   }
 }
+function _prepareCaptureWrapper(wrapper, clone){
+  wrapper.classList.add('capturing');
+  clone.classList.add('capturing');
+  clone.querySelectorAll('.table-scroll').forEach(sc=>{
+    const table=sc.querySelector('table');
+    const tableW=table?Math.ceil(Math.max(table.scrollWidth,table.offsetWidth,table.getBoundingClientRect().width)):Math.ceil(sc.scrollWidth);
+    sc.style.overflow='visible';
+    sc.style.width=tableW+'px';
+    sc.style.maxWidth='none';
+    sc.style.margin='0';
+    if(table){
+      table.style.width=tableW+'px';
+      table.style.minWidth=tableW+'px';
+      table.style.maxWidth='none';
+    }
+    const act=sc.closest('.actividad');
+    if(act){
+      const cs=getComputedStyle(act);
+      const pad=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+      act.style.width=(tableW+pad)+'px';
+      act.style.maxWidth='none';
+    }
+  });
+  const w=Math.ceil(Math.max(1400,wrapper.scrollWidth,clone.scrollWidth));
+  wrapper.style.width=w+'px';
+  wrapper.style.maxWidth='none';
+  return w;
+}
 function saveImg(){
   const btn=document.getElementById('btn-img');
   btn.textContent='Generando...';btn.disabled=true;
@@ -1927,6 +1955,7 @@ function _captureEl(callback){
     +'width:1400px;max-width:1400px;box-sizing:border-box;z-index:-9999;overflow:visible;';
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
+  _prepareCaptureWrapper(wrapper, clone);
 
   // iOS Safari has a max canvas size of ~16MP — use lower scale
   const scale=isIOS()?1.5:8;
@@ -1975,6 +2004,7 @@ function copyImg(){
     +'width:1400px;max-width:1400px;box-sizing:border-box;z-index:-9999;overflow:visible;';
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
+  _prepareCaptureWrapper(wrapper, clone);
 
   const scale=isIOS()?1.5:8;
 
