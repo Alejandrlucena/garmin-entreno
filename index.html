@@ -2036,8 +2036,21 @@ function fitToGarminJson(fitData, filename) {
     customZones = true;
     customZonesData = window.customHRZones;
   } else {
+    var hrCalcType = zt.hrCalcType !== undefined ? zt.hrCalcType : (zt.hr_calc_type !== undefined ? zt.hr_calc_type : 1);
     var maxHR = zt.maxHeartRate || zt.max_heart_rate || session.maxHeartRate || session.max_heart_rate || 190;
-    bounds = [0.50, 0.60, 0.70, 0.80, 0.90].map(function(p){ return Math.round(maxHR * p); });
+    var threshHR = zt.thresholdHeartRate || zt.threshold_heart_rate || 0;
+    var restHR = session.restingHeartRate || session.resting_heart_rate || 0;
+    if (hrCalcType === 3 && threshHR > 0) {
+      /* percent_lt: Garmin value 3 (not in standard SDK enum) — zones relative to lactate threshold HR */
+      bounds = [1, 0.68, 0.83, 0.94, 1.05].map(function(p, i){ return i === 0 ? 1 : Math.round(threshHR * p); });
+    } else if ((hrCalcType === 2 || hrCalcType === 'percent_hrr') && restHR > 0 && maxHR > restHR) {
+      /* percent_hrr: Karvonen — zones as % of heart rate reserve */
+      var hrr = maxHR - restHR;
+      bounds = [0.50, 0.60, 0.70, 0.80, 0.90].map(function(p){ return Math.round(restHR + hrr * p); });
+    } else {
+      /* percent_max_hr (default, also handles calc_type 0 custom fallback) */
+      bounds = [0.50, 0.60, 0.70, 0.80, 0.90].map(function(p){ return Math.round(maxHR * p); });
+    }
   }
 
   /* ── Compute HR zones from per-second records ── */
