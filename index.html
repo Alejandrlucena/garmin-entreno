@@ -748,30 +748,43 @@ var allR=[];
 
   var desnivelAcum=allR.reduce(function(a,r){var n=parseInt(r.desnivel)||0;return a+(n>0?n:0);},0);
   function ravg(arr,fn){return arr.length?arr.reduce(function(a,r){return a+fn(r);},0)/arr.length:0;}
+  function sumDur(arr){return arr.reduce(function(a,r){return a+(r.dur_secs||0);},0);}
+  function sumDist(arr){return arr.reduce(function(a,r){return a+(r.dist_km||0);},0);}
+  function timeAvg(arr,fn){
+    var den=sumDur(arr);
+    if(!den)return arr.length?ravg(arr,fn):0;
+    return arr.reduce(function(a,r){return a+fn(r)*(r.dur_secs||0);},0)/den;
+  }
   // Media sesión: TODO (warmup + series + descansos + cooldown)
   var validAllR=allR.filter(function(r){return r.speed>=0.01;});
   var validAllRWithHR=allR.filter(function(r){return r.fc_med>=0.01;});
-  var avgKmhSes=validAllR.length?ravg(validAllR,function(r){return r.speed*3.6;}).toFixed(1):'—';
-  // Avg ritmo media sesión: TODO
-  var avgRSSes=allR.length?ravg(allR,function(r){var rs=ritmoSecs(r.speed);return rs>0&&rs<1800?rs:1800;}):null;
-  // FC media sesión: TODO
-  var avgFCmSes=validAllRWithHR.length?Math.round(ravg(validAllRWithHR,function(r){return r.fc_med;})):'—';
+  var totalDurSes=sumDur(allR);
+  var totalDistSes=sumDist(allR);
+  var avgSpeedSes=(totalDistSes>0&&totalDurSes>0)?totalDistSes*1000/totalDurSes:(validAllR.length?timeAvg(validAllR,function(r){return r.speed;}):0);
+  var avgKmhSes=avgSpeedSes?toKmh(avgSpeedSes):'—';
+  // Avg ritmo media sesión: TODO, using total distance/time like Garmin
+  var avgRSSes=avgSpeedSes?ritmoSecs(avgSpeedSes):null;
+  // FC media sesión: TODO, time-weighted
+  var avgFCmSes=validAllRWithHR.length?Math.round(timeAvg(validAllRWithHR,function(r){return r.fc_med;})):'—';
   // FC max sesión: máximo de TODO
   var fcMaxAll=allR.filter(function(r){return r.fc_max>0;});
   var avgFCxSes=fcMaxAll.length?Math.max.apply(null,fcMaxAll.map(function(r){return r.fc_max;})):'—';
   // Media series: SOLO series activas (no rests, no warmup, no cooldown)
   var activeOnlyArr=seriesArr.filter(function(s){return!_isDescanso(s);});
   var activeOnlyArrWithFC=activeOnlyArr.filter(function(r){return r.fc_med>0;});
-  var avgKmhSer=activeOnlyArr.length?ravg(activeOnlyArr,function(r){return r.speed*3.6;}).toFixed(1):'—';
-  var avgRSSer=activeOnlyArr.length?ravg(activeOnlyArr,function(r){var rs=ritmoSecs(r.speed);return rs>0&&rs<1800?rs:1800;}):null;
-  var avgDSer=activeOnlyArr.length?(activeOnlyArr.reduce(function(a,r){return a+r.dist_km;},0)/activeOnlyArr.length).toFixed(2)+' km':'—';
-  var avgDsnivelSer=activeOnlyArr.length?Math.round(activeOnlyArr.reduce(function(a,r){return a+(parseInt(r.desnivel)||0);},0)/activeOnlyArr.length):0;
-  var avgFCmSer=activeOnlyArrWithFC.length?Math.round(ravg(activeOnlyArrWithFC,function(r){return r.fc_med;})):'—';
+  var totalDurSer=sumDur(activeOnlyArr);
+  var totalDistSer=sumDist(activeOnlyArr);
+  var avgSpeedSer=(totalDistSer>0&&totalDurSer>0)?totalDistSer*1000/totalDurSer:(activeOnlyArr.length?timeAvg(activeOnlyArr,function(r){return r.speed;}):0);
+  var avgKmhSer=avgSpeedSer?toKmh(avgSpeedSer):'—';
+  var avgRSSer=avgSpeedSer?ritmoSecs(avgSpeedSer):null;
+  var avgDSer=activeOnlyArr.length?totalDistSer.toFixed(2)+' km':'—';
+  var avgDsnivelSer=activeOnlyArr.length?activeOnlyArr.reduce(function(a,r){return a+(parseInt(r.desnivel)||0);},0):0;
+  var avgFCmSer=activeOnlyArrWithFC.length?Math.round(timeAvg(activeOnlyArrWithFC,function(r){return r.fc_med;})):'—';
   var avgFCxSer=activeOnlyArr.length?Math.max.apply(null,activeOnlyArr.filter(function(r){return r.fc_max>0}).map(function(r){return r.fc_max;})):'—';
   var cadArr=validAllR.filter(function(r){return r.cadencia>0;});
-  var avgCadSes=cadArr.length?Math.round(ravg(cadArr,function(r){return r.cadencia;})):'—';
+  var avgCadSes=cadArr.length?Math.round(timeAvg(cadArr,function(r){return r.cadencia;})):'—';
   var cadSerArr=activeOnlyArr.filter(function(r){return r.cadencia>0;});
-  var avgCadSer=cadSerArr.length?Math.round(ravg(cadSerArr,function(r){return r.cadencia;})):'—';
+  var avgCadSer=cadSerArr.length?Math.round(timeAvg(cadSerArr,function(r){return r.cadencia;})):'—';
 
   // Apply label normalization to all rows
   if(warmup)warmup.label=_normLabel(warmup.label)||'Calentamiento';
@@ -787,19 +800,28 @@ var allR=[];
 
   _actId='a'+Math.random().toString(36).slice(2,6);
   _rowIdx=0;
+  var _rowNum=0;
+  var _cumTimeSecs=0;
   var rows='';
 
   // ── Helper: render a single data row (lap o phase summary) ──
   function _dataRow(s, ref, isDesc, isPill, rowClass, indentPx, hideButton){
     var ri=_rowIdx++;
     var rowId=_actId+'r'+ri;
+    _rowNum++;
+    var _rn=_rowNum;
+    var _vuelta=s.vuelta||s.lapLabel||_rn;
+    var _thisDur=s.dur_secs||0;
+    _cumTimeSecs+=_thisDur;
+    var _ct=_cumTimeSecs;
     var isPillByVal=s.fc_max>0&&s.fc_max===maxFCxVal&&!isDesc;
     var fcmaxVal=isPillByVal?'<span class="fc-max-pill">'+s.fc_max+'</span>':''+s.fc_max;
     var lbl=s.label||'—';
     // Show duration if NOT a simple number (continuous run = just "1", "2", etc.)
+    // In intervalos mode, duration goes in its own column so skip from label
     var isJustNumber=/^\d+$/.test(lbl);
     var dur=!isJustNumber?_lapDurSecs(s):null;
-    var durSpan=dur?'<span style="font-size:9px;color:#454a55;margin-left:7px;font-weight:400">'+secsToStr(dur)+'</span>':'';
+    var durSpan=(dur&&!esIntervalos)?'<span style="font-size:9px;color:#454a55;margin-left:7px;font-weight:400">'+secsToStr(dur)+'</span>':'';
     var labelHtml='<div class="lap-label-cell"><div class="lap-label-row">'
       +(indentPx?'<span style="display:inline-block;width:'+indentPx+'px;flex-shrink:0"></span>':'')
       +'<span style="'+(isDesc?'color:#252830':'')+'">'+lbl+'</span>'
@@ -829,8 +851,14 @@ var hasRef=ref!==null;
       var elevDisplay=distDisplay?elevHtml(s.desnivel, ref&&ref.desnivel):'';
 var rowClassDesc=isDesc?' desc-row':'';
     var descStyle=isDesc?'style="color:#252830"':'';
+    var _extraCells=esIntervalos
+      ?'<td style="text-align:center;color:#6a7280;font-weight:700;font-size:11px">'+_vuelta+'</td>'
+        +'<td><div class="metric"><div class="main">'+(_thisDur?secsToStr(_thisDur):'—')+'</div></div></td>'
+        +'<td><div class="metric"><div class="main" style="font-size:10px;color:#5a6070">'+(_ct?secsToStr(_ct):'—')+'</div></div></td>'
+      :'';
     return '<tr id="'+rowId+'" class="'+(rowClass||'')+rowClassDesc+'">'
         +'<td>'+labelHtml+'</td>'
+        +_extraCells
         +'<td><div class="metric"><div class="main" '+descStyle+'>'+distDisplay+'</div>'+elevDisplay+'</div></td>'
         +'<td><div class="metric"><div class="main" '+descStyle+'>'+kmhVal+'</div>'+dKmhM+'</div></td>'
         +(cadVal?'<td><div class="metric"><div class="main" '+descStyle+'>'+cadVal+'</div></td>':'<td></td>')
@@ -841,6 +869,11 @@ var rowClassDesc=isDesc?' desc-row':'';
     } else {
 return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
         +'<td>'+labelHtml+'</td>'
+        +(esIntervalos
+          ?'<td style="text-align:center;color:#6a7280;font-weight:700;font-size:11px">'+_vuelta+'</td>'
+            +'<td><div class="metric"><div class="main">'+(_thisDur?secsToStr(_thisDur):'—')+'</div></div></td>'
+            +'<td><div class="metric"><div class="main" style="font-size:10px;color:#5a6070">'+(_ct?secsToStr(_ct):'—')+'</div></div></td>'
+          :'')
         +'<td><div class="metric"><div class="main">'+s.dist_km.toFixed(2)+' km</div>'+elevHtml(s.desnivel)+'</div></td>'
         +'<td><div class="metric"><div class="main">'+toKmh(s.speed)+'</div>'+(hasRef?dKmh(s.speed,ref.speed):'')+'</div></td>'
         +_cadCell(s.cadencia,hasRef?ref.cadencia:0,false)
@@ -940,6 +973,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
         +'<td><span class="group-arrow">▼</span>Calentamiento'
         +'<span style="font-size:9px;color:#454a55;margin-left:8px">'+secsToStr(warmup.dur_secs||0)+'</span>'
         +'</td>'
+        +'<td></td><td></td><td></td>'
         +'<td><div class="metric"><div class="main">'+warmup.dist_km.toFixed(2)+' km</div></div></td>'
         +'<td><div class="metric"><div class="main">'+toKmh(warmup.speed)+'</div></div></td>'
         +'<td><div class="metric"><div class="main">'+(warmup.cadencia||'—')+'</div></div></td>'
@@ -996,6 +1030,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
          +'<span class="group-label">Intervalo</span>'
          +'<span class="group-dur">'+durStr+'</span>'
          +'</td>'
+         +'<td></td><td></td><td></td>'
          +'<td><div class="metric"><div class="main">'+syn.dist_km.toFixed(2)+' km</div>'+elevHtml(syn.desnivel)+'</div></td>'
          +'<td><div class="metric"><div class="main">'+toKmh(syn.speed)+'</div>'+dKmhH+'</div></td>'
          +'<td><div class="metric"><div class="main">'+(syn.cadencia||'—')+'</div>'+dCadH+'</div></td>'
@@ -1021,6 +1056,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
         +'<td><span class="group-arrow">▼</span>Recuperación'
         +'<span style="font-size:9px;color:#454a55;margin-left:8px">'+secsToStr(cooldown.dur_secs||0)+'</span>'
         +'</td>'
+        +'<td></td><td></td><td></td>'
         +'<td><div class="metric"><div class="main">'+cooldown.dist_km.toFixed(2)+' km</div></div></td>'
         +'<td><div class="metric"><div class="main">'+toKmh(cooldown.speed)+'</div></div></td>'
         +'<td><div class="metric"><div class="main">'+(cooldown.cadencia||'—')+'</div></div></td>'
@@ -1051,7 +1087,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
   var distSes='<div class="metric"><div class="main">'+(d.distancia_total||'—')+'</div>'+(desnivelAcum>0?'<div class="elev dp">▲ +'+desnivelAcum+'m acum.</div>':'')+'</div>';
 
   var zonasGlobal=zonas.length?zonas:aggregateZones(allR);
-  var zonasSeries=aggregateZones(seriesArr);
+  var zonasSeries=aggregateZones(activeOnlyArr);
 
   if(esCarrera){
     rows+='<tr class="avg-act"><td>Media sesión</td>'
@@ -1064,6 +1100,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
       +zonaCellHtml(zonasGlobal)+'</tr>';
   } else {
     rows+='<tr class="avg-row"><td>Media sesión</td>'
+      +'<td></td><td></td><td></td>'
       +'<td>'+distSes+'</td>'
       +'<td><div class="metric"><div class="main">'+avgKmhSes+'</div></div></td>'
       +(avgCadSes!=='—'?'<td><div class="metric"><div class="main">'+avgCadSes+'</div></div></td>':'<td></td>')
@@ -1071,7 +1108,8 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
       +'<td><div class="metric"><div class="main"><span class="fc-med-pill">'+avgFCmSes+'</span></div></div></td>'
       +'<td><div class="metric"><div class="main"><span class="fc-max-pill">'+avgFCxSes+'</span></div></div></td>'
       +zonaCellHtml(zonasGlobal)+'</tr>'
-      +'<tr class="avg-act"><td>Media series</td>'
+      +'<tr class="avg-act"><td>Media trabajo efectivo</td>'
+      +'<td></td><td></td><td></td>'
       +'<td><div class="metric"><div class="main">'+avgDSer+'</div>'+elevHtml(avgDsnivelSer)+'</div></td>'
       +'<td><div class="metric"><div class="main">'+avgKmhSer+'</div></div></td>'
       +(avgCadSer!=='—'?'<td><div class="metric"><div class="main">'+avgCadSer+'</div></div></td>':'<td></td>')
@@ -1111,14 +1149,14 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
   }
   var zHtml='';
   var blockSes=renderZoneBlock(esIntervalos?'Media sesión':'Sesión',zonasGlobal);
-  var blockSer=esIntervalos?renderZoneBlock('Media series',zonasSeries):'';
+  var blockSer=esIntervalos?renderZoneBlock('Media trabajo efectivo',zonasSeries):'';
   if(blockSes||blockSer){
     zHtml='<div class="zones">'+blockSes+(blockSer?'<div style="margin-top:16px">'+blockSer+'</div>':'')+'</div>';
   }
 
   var eb='';// estructura badge removed
 
-  var thSerie=esCarrera?'Km':esLibre?'Lap':'Serie';
+  var thSerie=esCarrera?'Km':esLibre?'Lap':'Tipo de paso';
   var actIdx=Math.random().toString(36).slice(2,8);
 
   // Calcular tiempo total y tiempo activo
@@ -1145,6 +1183,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
     +'<div class="table-scroll"><table>'
     +'<thead><tr>'
     +'<th>'+thSerie+'</th>'
+    +(esIntervalos?'<th>Vuelta</th><th>Tiempo</th><th>Tiempo acum.</th>':'')
     +'<th class="th-dist">Distancia<span style="margin:0 5px;opacity:.3">·</span><span class="th-sub-inline">Desnivel</span></th>'
     +'<th>km/h</th>'
     +'<th>Cadencia</th>'
@@ -1222,7 +1261,7 @@ function fromChatGPTNested(raw){
         const recN=series.filter(x=>_isDescanso&&/descanso/i.test(x.label)).length+1;
         s.label=`Descanso ${recN}`;series.push(s);
       } else {
-        activeCount++;s.label=`Serie ${activeCount}`;series.push(s);
+        activeCount++;s.label='Carrera';series.push(s);
       }
     });
   });
@@ -1333,6 +1372,7 @@ function _normLap(lap){
   const cadence=lap.avgRunningCadence||lap.averageRunCadence||lap.avgRunningCadence||lap.avg_cadence||lap.avg_run_cadence||lap.averageCadence||lap.cadencia||lap.cadence||0;
   // wktStepIndex: same value across laps from one workout step (auto-lap can split a step)
   const wktStepIndex=(lap.wktStepIndex!==undefined&&lap.wktStepIndex!==null)?lap.wktStepIndex:null;
+  const lapIndex=lap.lapIndex||lap.lap_index||lap.messageIndex||lap.message_index||null;
   return{
     intensityType:intensity,
     distance,duration,movingDuration,
@@ -1344,6 +1384,8 @@ function _normLap(lap){
     elevationGain:lap.elevationGain||lap.totalAscent||lap.ascent||lap.elevation_gain||0,
     elevationLoss:lap.elevationLoss||lap.totalDescent||lap.descent||lap.elevation_loss||0,
     hrTimeInZone:lap.hrTimeInZone||lap.hr_time_in_zones||[],
+    lapStart:lap.lapStart||lap.lap_start||lapIndex,
+    lapEnd:lap.lapEnd||lap.lap_end||lapIndex,
     wktStepIndex:wktStepIndex
   };
 }
@@ -1379,6 +1421,8 @@ function _mergeAutoLapSplits(laps){
     prev.averageRunCadence=Math.round(wAvg(prev.averageRunCadence,lap.averageRunCadence,prev.duration,lap.duration));
     prev.elevationGain=(prev.elevationGain||0)+(lap.elevationGain||0);
     prev.elevationLoss=(prev.elevationLoss||0)+(lap.elevationLoss||0);
+    prev.lapStart=prev.lapStart||lap.lapStart;
+    prev.lapEnd=lap.lapEnd||lap.lapStart||prev.lapEnd;
     // Sum hrTimeInZone arrays per zone
     if(lap.hrTimeInZone&&lap.hrTimeInZone.length){
       const acc={};
@@ -1463,6 +1507,20 @@ function fromRawGarmin(raw){
   const hrMax=allHRs.length?Math.max(...allHRs):200;
   const hrRange=hrMax-hrMin||1;
   function lapZones(normLap){
+    if(normLap.hrTimeInZone&&normLap.hrTimeInZone.length){
+      return normLap.hrTimeInZone.map(z=>({
+        zoneNumber:z.zoneNumber||z.zone||0,
+        secsInZone:z.secsInZone||z.secs||z.seconds||0,
+        zoneLowBoundary:z.zoneLowBoundary||z.lowBoundary||0
+      })).filter(z=>z.zoneNumber>0&&z.secsInZone>0)
+        .sort((a,b)=>b.zoneNumber-a.zoneNumber)
+        .map(z=>({
+          nombre:ZONE_NAMES[z.zoneNumber]||`Z${z.zoneNumber}`,
+          secs:z.secsInZone,
+          rango:zoneRange(z.zoneNumber),
+          color:ZONE_COLORS[z.zoneNumber]||'#888'
+        }));
+    }
     if(!globalZones.length)return[];
     const dur=normLap.duration;
     if(!dur)return[];
@@ -1511,8 +1569,8 @@ function fromRawGarmin(raw){
   // Normalize all laps, remove pure artefact laps (0m AND <15s: timer/sensor init)
   let laps=rawLaps.map(_normLap).filter(l=>!(l.distance===0&&l.duration<15));
 
-  // Merge laps split by auto-lap (same wktStepIndex + same intensityType, consecutive)
-  laps=_mergeAutoLapSplits(laps);
+  // Keep every Garmin lap visible. Group headers synthesize workout-step totals,
+  // while the new "Vuelta" column needs the original lap rows (1, 2, 3...).
 
   // Filter trailing tiny noise laps (<5s AND <50m)
   while(laps.length>0){
@@ -1568,6 +1626,23 @@ function fromRawGarmin(raw){
   let warmup=null,cooldown=null;
   const series=[];
   let activeCount=0,restCount=0;
+  const lapRange=(ls)=>{
+    const nums=ls.map(l=>l.lapStart||l.lapEnd).filter(Boolean);
+    const ends=ls.map(l=>l.lapEnd||l.lapStart).filter(Boolean);
+    if(!nums.length&&!ends.length)return'';
+    const a=Math.min(...nums,...ends),b=Math.max(...nums,...ends);
+    return a===b?String(a):`${a} - ${b}`;
+  };
+  const mergeHrZones=(ls)=>{
+    const acc={};
+    ls.forEach(l=>(l.hrTimeInZone||[]).forEach(z=>{
+      const k=z.zoneNumber||z.zone;
+      if(!k)return;
+      if(!acc[k])acc[k]={...z,zoneNumber:k,secsInZone:0};
+      acc[k].secsInZone+=(z.secsInZone||z.secs||z.seconds||0);
+    }));
+    return Object.values(acc);
+  };
 
   // Build cooldown (merge if multiple)
   if(cooldownLaps.length){
@@ -1577,7 +1652,7 @@ function fromRawGarmin(raw){
     const maxHR=Math.max(...cooldownLaps.map(l=>l.maxHR||0));
     const wCad=cooldownLaps.reduce((a,l)=>a+(l.averageRunCadence*l.duration),0)/(totDur||1);
     const wSpd=totDur>0?totDist/totDur:0;
-    const synthLap={averageHR:wHR,duration:totDur};
+    const synthLap={averageHR:wHR,duration:totDur,hrTimeInZone:mergeHrZones(cooldownLaps)};
     cooldown={
       label:'Recuperación',_intensityType:'RECOVERY',
       speed:wSpd,
@@ -1587,6 +1662,7 @@ function fromRawGarmin(raw){
       desnivel:0,
       fc_med:Math.round(wHR),
       fc_max:Math.round(maxHR),
+      vuelta:lapRange(cooldownLaps),
       zonas_lap:lapZones(synthLap)
     };
   }
@@ -1608,6 +1684,7 @@ function fromRawGarmin(raw){
     const subLaps=warmupRawLaps.length>1?warmupRawLaps.map((lap)=>{
       var cad=lap.avgRunningCadence||lap.averageRunCadence||lap.avg_running_cadence||lap.avg_cadence||lap.avg_run_cadence||lap.averageCadence||lap.cadencia||lap.cadence||0;
       return{label:'Calentamiento',_intensityType:'WARMUP',
+        vuelta:lapRange([lap]),
         speed:lap.averageSpeed,dist_km:Math.round(lap.distance/10)/100,
         dur_secs:Math.round(lap.duration),cadencia:Math.round(cad),
         desnivel:Math.round((lap.elevationGain||0)-(lap.elevationLoss||0)),
@@ -1619,7 +1696,8 @@ function fromRawGarmin(raw){
       speed:wSpd,dist_km:Math.round(totDist/10)/100,dur_secs:Math.round(totDur),
       cadencia:Math.round(wCad),desnivel:0,
       fc_med:Math.round(wHR),fc_max:maxHR,
-      zonas_lap:lapZones({averageHR:wHR,duration:totDur}),
+      vuelta:lapRange(warmupRawLaps),
+      zonas_lap:lapZones({averageHR:wHR,duration:totDur,hrTimeInZone:mergeHrZones(warmupRawLaps)}),
       subLaps
     };
   }
@@ -1637,6 +1715,7 @@ function fromRawGarmin(raw){
       desnivel:Math.round((lap.elevationGain||0)-(lap.elevationLoss||0)),
       fc_med:Math.round(lap.averageHR||0),
       fc_max:Math.round(lap.maxHR||0),
+      vuelta:lapRange([lap]),
       zonas_lap:lapZones(lap)
     };
     if(intensity==='REST'){
@@ -1644,7 +1723,7 @@ function fromRawGarmin(raw){
     } else if(intensity==='RECOVERY'){
       restCount++;s.label=`Descanso ${restCount}`;s._intensityType='REST';series.push(s);
     } else {
-      activeCount++;s.label=`Serie ${activeCount}`;series.push(s);
+      activeCount++;s.label='Carrera';series.push(s);
     }
   });
 
@@ -2000,7 +2079,20 @@ function fitToGarminJson(fitData, filename) {
   var records  = fitData.records  || [];
   window.fitRecords = records;
   var workouts = fitData.workouts || [];
-  var zonesArr = fitData.zonesTarget || fitData.zones_target || [];
+  var zonesRaw = fitData.zonesTarget || fitData.zones_target || [];
+  var zonesArr = Array.isArray(zonesRaw) ? zonesRaw : (zonesRaw ? [zonesRaw] : []);
+  var tizRaw = fitData.timeInZone || fitData.time_in_zone || [];
+  var timeInZones = Array.isArray(tizRaw) ? tizRaw : (tizRaw ? [tizRaw] : []);
+  var sessionTimeInZone = timeInZones.find(function(t){
+    return (t.referenceMesg || t.reference_mesg) === 18 || (t.referenceMesg || t.reference_mesg) === 'session';
+  }) || null;
+  var lapTimeInZone = {};
+  timeInZones.forEach(function(t){
+    var ref = t.referenceMesg || t.reference_mesg;
+    if (ref !== 19 && ref !== 'lap') return;
+    var idx = t.referenceIndex !== undefined ? t.referenceIndex : t.reference_index;
+    if (idx !== undefined && idx !== null) lapTimeInZone[idx] = t;
+  });
 
   var session  = sessions[0]  || {};
   var zt       = zonesArr[0]  || {};
@@ -2033,7 +2125,38 @@ function fitToGarminJson(fitData, filename) {
   var bounds;
   var customZones = false;
   var customZonesData = null;
-  if (window.customHRZones && window.customHRZones.length === 5) {
+  var workoutSteps = [];
+  ['workoutSteps','workout_steps','workoutStep','workout_step'].forEach(function(k){
+    var v = fitData[k];
+    if (!v) return;
+    if (Array.isArray(v)) workoutSteps = workoutSteps.concat(v);
+    else workoutSteps.push(v);
+  });
+  function _calcIs(val, num, name) {
+    return val === num || String(val).toLowerCase() === name;
+  }
+  function _median(vals) {
+    vals = vals.filter(function(v){return isFinite(v)&&v>60&&v<240;}).sort(function(a,b){return a-b;});
+    return vals.length ? vals[Math.floor(vals.length/2)] : 0;
+  }
+  function _stepNum(step, a, b) {
+    var v = step[a] !== undefined ? step[a] : step[b];
+    v = parseFloat(v);
+    return isNaN(v) ? 0 : v;
+  }
+  function _baseFromWorkoutTargets(pcts, rest) {
+    var vals = [];
+    workoutSteps.forEach(function(step){
+      var zn = _stepNum(step, 'targetHrZone', 'target_hr_zone');
+      if (zn < 1 || zn > 5) return;
+      var low = _stepNum(step, 'customTargetHeartRateLow', 'custom_target_heart_rate_low');
+      var high = _stepNum(step, 'customTargetHeartRateHigh', 'custom_target_heart_rate_high');
+      if (low > 50 && pcts[zn-1]) vals.push(rest ? (low-rest)/pcts[zn-1] : low/pcts[zn-1]);
+      if (high > 50 && zn < 5 && pcts[zn]) vals.push(rest ? (high-rest)/pcts[zn] : high/pcts[zn]);
+    });
+    return _median(vals);
+  }
+  if (window.customHRZonesActive && window.customHRZones && window.customHRZones.length === 5) {
     customZones = true;
     customZonesData = window.customHRZones;
   } else {
@@ -2041,43 +2164,90 @@ function fitToGarminJson(fitData, filename) {
     var maxHR = zt.maxHeartRate || zt.max_heart_rate || session.maxHeartRate || session.max_heart_rate || 190;
     var threshHR = zt.thresholdHeartRate || zt.threshold_heart_rate || 0;
     var restHR = session.restingHeartRate || session.resting_heart_rate || 0;
-    if (hrCalcType === 3 && threshHR > 0) {
-      /* percent_lt: Garmin value 3 — Garmin's fixed zone splits: 58/68/80/91/102% of LT HR */
-      bounds = [0.58, 0.68, 0.80, 0.91, 1.02].map(function(p){ return Math.round(threshHR * p); });
-    } else if ((hrCalcType === 2 || hrCalcType === 'percent_hrr') && restHR > 0 && maxHR > restHR) {
+    var tizBounds = sessionTimeInZone && (sessionTimeInZone.hrZoneHighBoundary || sessionTimeInZone.hr_zone_high_boundary);
+    if (tizBounds && tizBounds.length >= 5) {
+      /* FIT time_in_zone is the authoritative source Garmin Connect uses for this activity. */
+      bounds = tizBounds.slice(0, 5).map(function(v){ return Math.round(v); });
+    } else if (_calcIs(hrCalcType, 3, 'percent_lt') && threshHR > 0) {
+      /* Garmin's fixed zone splits: 58/68/80/91/102% of LT HR */
+      var ltPcts = [0.58, 0.68, 0.80, 0.91, 1.02];
+      var inferredLT = _baseFromWorkoutTargets(ltPcts, 0);
+      if (inferredLT) threshHR = inferredLT;
+      bounds = ltPcts.map(function(p){ return Math.round(threshHR * p); });
+    } else if (_calcIs(hrCalcType, 2, 'percent_hrr') && restHR > 0 && maxHR > restHR) {
       /* percent_hrr: Karvonen — zones as % of heart rate reserve */
-      var hrr = maxHR - restHR;
-      bounds = [0.50, 0.60, 0.70, 0.80, 0.90].map(function(p){ return Math.round(restHR + hrr * p); });
+      var hrrPcts = [0.50, 0.60, 0.70, 0.80, 0.90];
+      var hrr = _baseFromWorkoutTargets(hrrPcts, restHR) || (maxHR - restHR);
+      bounds = hrrPcts.map(function(p){ return Math.round(restHR + hrr * p); });
     } else {
       /* percent_max_hr (default, also handles calc_type 0 custom fallback) */
-      bounds = [0.50, 0.60, 0.70, 0.80, 0.90].map(function(p){ return Math.round(maxHR * p); });
+      var maxPcts = [0.50, 0.60, 0.70, 0.80, 0.90];
+      maxHR = _baseFromWorkoutTargets(maxPcts, 0) || maxHR;
+      bounds = maxPcts.map(function(p){ return Math.round(maxHR * p); });
     }
   }
 
   /* ── Compute HR zones from per-second records ── */
-  var zoneSecs = [0,0,0,0,0];
-  records.forEach(function(r) {
-    var hr = r.heartRate || r.heart_rate || 0;
-    if (!hr) return;
-    var z = -1;
+  function zoneIndexForHR(hr) {
+    if (!hr) return -1;
     if (customZones) {
-      for (var i = 0; i < 5; i++) {
-        if (hr >= customZonesData[i].min && hr <= customZonesData[i].max) {
-          z = i;
-          break;
-        }
+      for (var zi = 0; zi < 5; zi++) {
+        if (hr >= customZonesData[zi].min && hr <= customZonesData[zi].max) return zi;
       }
-      if (z === -1) return;
-    } else {
-      for (var i = 4; i >= 0; i--) { if (hr >= bounds[i]) { z = i; break; } }
+      return -1;
     }
-    if (z >= 0) zoneSecs[z]++;
-  });
+    for (var zj = 4; zj >= 0; zj--) { if (hr >= bounds[zj]) return zj; }
+    return -1;
+  }
+  function zoneRowsFromSecs(secsArr) {
+    return secsArr.map(function(secs, i) {
+      var lowBound = customZones ? customZonesData[i].min : bounds[i];
+      return { zoneNumber: i+1, secsInZone: secs, zoneLowBoundary: lowBound };
+    });
+  }
+  var zoneSecs = [0,0,0,0,0];
+  var tizSessionTimes = sessionTimeInZone && (sessionTimeInZone.timeInHrZone || sessionTimeInZone.time_in_hr_zone);
+  if (!customZones && tizSessionTimes && tizSessionTimes.length >= 6) {
+    zoneSecs = tizSessionTimes.slice(1, 6).map(function(v){ return Math.round(v || 0); });
+  } else {
+    records.forEach(function(r) {
+      var hr = r.heartRate || r.heart_rate || 0;
+      var z = zoneIndexForHR(hr);
+      if (z >= 0) zoneSecs[z]++;
+    });
+  }
 
-  var hr_time_in_zones = zoneSecs.map(function(secs, i) {
-    var lowBound = customZones ? customZonesData[i].min : bounds[i];
-    return { zoneNumber: i+1, secsInZone: secs, zoneLowBoundary: lowBound };
-  });
+  var hr_time_in_zones = zoneRowsFromSecs(zoneSecs);
+
+  function toMs(v) {
+    if (!v) return 0;
+    if (v instanceof Date) return v.getTime();
+    if (typeof v === 'number') return v > 100000000000 ? v : v * 1000;
+    var d = new Date(String(v).replace(' ','T'));
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+  var recordPoints = records.map(function(r){
+    return { t: toMs(r.timestamp || r.startTime || r.start_time), hr: r.heartRate || r.heart_rate || 0 };
+  }).filter(function(r){ return r.t && r.hr; }).sort(function(a,b){ return a.t-b.t; });
+  function lapHrZones(lap, nextLap, lapIndex) {
+    var tizLap = lapTimeInZone[lapIndex];
+    var tizLapTimes = tizLap && (tizLap.timeInHrZone || tizLap.time_in_hr_zone);
+    if (!customZones && tizLapTimes && tizLapTimes.length >= 6) {
+      return zoneRowsFromSecs(tizLapTimes.slice(1, 6).map(function(v){ return Math.round(v || 0); }));
+    }
+    var startMs = toMs(lap.startTime || lap.start_time || lap.timestamp);
+    var endMs = nextLap ? toMs(nextLap.startTime || nextLap.start_time || nextLap.timestamp) : 0;
+    var dur = lap.total_elapsed_time || lap.totalElapsedTime || lap.total_timer_time || lap.totalTimerTime || 0;
+    if (!endMs && startMs && dur) endMs = startMs + dur * 1000;
+    var secs = [0,0,0,0,0];
+    if (!startMs || !endMs || endMs <= startMs) return zoneRowsFromSecs(secs);
+    recordPoints.forEach(function(r){
+      if (r.t < startMs || r.t >= endMs) return;
+      var z = zoneIndexForHR(r.hr);
+      if (z >= 0) secs[z]++;
+    });
+    return zoneRowsFromSecs(secs);
+  }
 
   /* ── Convert laps to raw Garmin API format ── */
   var intensityMap = { warmup: 'WARMUP', active: 'ACTIVE', rest: 'REST', recovery: 'RECOVERY', cooldown: 'RECOVERY' };
@@ -2107,7 +2277,8 @@ function fitToGarminJson(fitData, filename) {
       elevationLoss: lap.totalDescent || lap.total_descent || 0,
       intensityType: intensityMap[intensity] || 'ACTIVE',
       wktStepIndex: wktIdx,
-      hrTimeInZone: []
+      lapIndex: i + 1,
+      hrTimeInZone: lapHrZones(lap, laps[i+1], i)
     };
   });
 
@@ -2168,6 +2339,7 @@ function copyPrompt(){
 
 /* ── CUSTOM HR ZONES ── */
 window.customHRZones = null;
+window.customHRZonesActive = false;
 
 function toggleHRZones() {
   var content = document.getElementById('hr-zones-content');
@@ -2216,8 +2388,8 @@ function loadZones() {
   var check = document.getElementById('hr-save-check');
   if (saved) {
     try {
-      window.customHRZones = JSON.parse(saved);
-      updateZoneRanges();
+      window.customHRZones = null;
+      window.customHRZonesActive = false;
       var method = localStorage.getItem('hr-method') || 'lactate';
       document.getElementById('hr-method').value = method;
       toggleHRMethod();
@@ -2239,6 +2411,8 @@ function loadZones() {
       if (check) check.checked = true;
     } catch(e) {}
   } else {
+    window.customHRZones = null;
+    window.customHRZonesActive = false;
     if (check) check.checked = false;
   }
 }
@@ -2247,11 +2421,13 @@ function onHrSaveCheckChange() {
   var check = document.getElementById('hr-save-check');
   if (!check.checked) {
     localStorage.removeItem('customHRZones');
+    window.customHRZones = null;
+    window.customHRZonesActive = false;
   }
 }
 
 function recomputeHRZonesFromRecords() {
-  if (!window.customHRZones || window.customHRZones.length !== 5) return false;
+  if (!window.customHRZonesActive || !window.customHRZones || window.customHRZones.length !== 5) return false;
   var customZonesData = window.customHRZones;
   var jsonText = document.getElementById('json-input').value.trim();
   if (jsonText) {
@@ -2302,6 +2478,7 @@ function applyHRZones() {
     var input = document.getElementById('hr-zones-input').value.trim();
     if (!input) {
       window.customHRZones = null;
+      window.customHRZonesActive = false;
       return;
     }
     var lines = input.split('\n');
@@ -2319,6 +2496,7 @@ function applyHRZones() {
       zones.push({min: parts[0], max: parts[1]});
     }
     window.customHRZones = zones;
+    window.customHRZonesActive = true;
     saveZones();
   } else if (method === 'lactate') {
     var lactate = parseFloat(document.getElementById('hr-lactate-value').value);
@@ -2335,6 +2513,7 @@ function applyHRZones() {
       zones.push({min: min, max: max});
     }
     window.customHRZones = zones;
+    window.customHRZonesActive = true;
     saveZones();
   } else if (method === 'maxhr') {
     var maxhr = parseFloat(document.getElementById('hr-maxhr-value').value);
@@ -2351,6 +2530,7 @@ function applyHRZones() {
       zones.push({min: min, max: max});
     }
     window.customHRZones = zones;
+    window.customHRZonesActive = true;
     saveZones();
   } else if (method === 'fcr') {
     var fcrMax = parseFloat(document.getElementById('hr-fcr-max').value);
@@ -2369,6 +2549,7 @@ function applyHRZones() {
       zones.push({min: min, max: max});
     }
     window.customHRZones = zones;
+    window.customHRZonesActive = true;
     saveZones();
   }
   recomputeHRZonesFromRecords();
