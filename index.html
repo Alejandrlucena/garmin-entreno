@@ -2028,7 +2028,7 @@ function getImageLink(){
         btn.disabled=false;
         if(!copied)prompt('Copia este link:',url);
       };
-      if(!isIOS()&&navigator.clipboard&&navigator.clipboard.writeText){
+      if(navigator.clipboard&&navigator.clipboard.writeText){
         navigator.clipboard.writeText(url).then(()=>finish(true)).catch(()=>finish(false));
       } else {
         finish(false);
