@@ -391,6 +391,9 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
   <button class="prompt-toggle" onclick="toggleHRZones()" style="margin-left:8px;">
     <span>⚡ Zonas FC</span>
   </button>
+  <button class="prompt-toggle" onclick="configureDriveUpload()" style="margin-left:8px;">
+    <span>Drive link</span>
+  </button>
 
   <button class="prompt-toggle" onclick="togglePrompt()" style="margin-left:8px;display:none">
     <span class="prompt-toggle-arrow" id="toggle-arrow">▶</span>
@@ -2021,10 +2024,9 @@ function getImageLink(){
       if(!result.ok&&!result.url)throw new Error(result.error||'El script no devolvió URL.');
       const url=result.url;
       const finish=(copied)=>{
-        btn.textContent=copied?'✓ Link copiado':'Obtener link';
+        btn.textContent=copied?'✓ Copiado':'Obtener link';
         btn.disabled=false;
         if(!copied)prompt('Copia este link:',url);
-        else setTimeout(()=>{btn.textContent=origText;},2500);
       };
       if(navigator.clipboard&&navigator.clipboard.writeText){
         navigator.clipboard.writeText(url).then(()=>finish(true)).catch(()=>finish(false));
