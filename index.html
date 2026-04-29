@@ -765,6 +765,7 @@ var allR=[];
   var avgKmhSer=activeOnlyArr.length?ravg(activeOnlyArr,function(r){return r.speed*3.6;}).toFixed(1):'—';
   var avgRSSer=activeOnlyArr.length?ravg(activeOnlyArr,function(r){var rs=ritmoSecs(r.speed);return rs>0&&rs<1800?rs:1800;}):null;
   var avgDSer=activeOnlyArr.length?(activeOnlyArr.reduce(function(a,r){return a+r.dist_km;},0)/activeOnlyArr.length).toFixed(2)+' km':'—';
+  var avgDsnivelSer=activeOnlyArr.length?Math.round(activeOnlyArr.reduce(function(a,r){return a+(parseInt(r.desnivel)||0);},0)/activeOnlyArr.length):0;
   var avgFCmSer=activeOnlyArrWithFC.length?Math.round(ravg(activeOnlyArrWithFC,function(r){return r.fc_med;})):'—';
   var avgFCxSer=activeOnlyArr.length?Math.max.apply(null,activeOnlyArr.filter(function(r){return r.fc_max>0}).map(function(r){return r.fc_max;})):'—';
   var cadArr=validAllR.filter(function(r){return r.cadencia>0;});
@@ -1047,9 +1048,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
     }
   }
 
-  var distSes=esCarrera
-    ?'<div class="metric"><div class="main">'+(d.distancia_total||'—')+'</div>'+(desnivelAcum>0?'<div class="elev dp">▲ +'+desnivelAcum+'m acum.</div>':'')+'</div>'
-    :'<div class="metric"><div class="main">'+(d.distancia_total||'—')+'</div></div>';
+  var distSes='<div class="metric"><div class="main">'+(d.distancia_total||'—')+'</div>'+(desnivelAcum>0?'<div class="elev dp">▲ +'+desnivelAcum+'m acum.</div>':'')+'</div>';
 
   var zonasGlobal=zonas.length?zonas:aggregateZones(allR);
   var zonasSeries=aggregateZones(seriesArr);
@@ -1073,7 +1072,7 @@ return '<tr id="'+rowId+'" class="'+(rowClass||'')+(isDesc?' desc-row':'')+'">'
       +'<td><div class="metric"><div class="main"><span class="fc-max-pill">'+avgFCxSes+'</span></div></div></td>'
       +zonaCellHtml(zonasGlobal)+'</tr>'
       +'<tr class="avg-act"><td>Media series</td>'
-      +'<td><div class="metric"><div class="main">'+avgDSer+'</div></div></td>'
+      +'<td><div class="metric"><div class="main">'+avgDSer+'</div>'+elevHtml(avgDsnivelSer)+'</div></td>'
       +'<td><div class="metric"><div class="main">'+avgKmhSer+'</div></div></td>'
       +(avgCadSer!=='—'?'<td><div class="metric"><div class="main">'+avgCadSer+'</div></div></td>':'<td></td>')
       +'<td><div class="metric"><div class="main">'+(avgRSSer?secsToStr(avgRSSer):'—')+'</div></div></td>'
@@ -1664,6 +1663,8 @@ function fromRawGarmin(raw){
 
 /* ── RENDER ── */
 function render(){
+  // Reset global zone-range lookup so stale data from a prior render can't bleed in
+  Object.keys(_zonaRangos).forEach(k=>delete _zonaRangos[k]);
   const raw=document.getElementById('json-input').value.trim();
   const errEl=document.getElementById('error-msg');
   errEl.style.display='none';
