@@ -1698,14 +1698,31 @@ function fromRawGarmin(raw){
       warmup:null,series,cooldown:null,zonas:buildZones(globalZones)};
   }
 
-  // Interval mode: classify RECOVERY laps as descansos (between intervals) or cooldown (at end)
-  // Find the last non-COOLDOWN lap index. Only COOLDOWN marks cooldown.
-  // RECOVERY laps between intervals stay with main workout.
-  let lastRealIdx=-1;
+  // Split trailing non-ACTIVE laps into descanso (last interval) vs Enfriamiento (cooldown).
+  // Strategy: find trailing non-ACTIVE laps from the end. The first distinct wktStep group
+  // immediately after the last ACTIVE = descanso (paired with last interval).
+  // Subsequent step groups = Enfriamiento. Fallback if no wktStepIndex: keep 1 trailing = descanso.
+  let trailingStart=laps.length;
   for(let i=laps.length-1;i>=0;i--){
-    if(laps[i].intensityType!='COOLDOWN'){lastRealIdx=i;break;}
+    const t=laps[i].intensityType;
+    if(t==='ACTIVE'||t==='WARMUP')break;
+    trailingStart=i;
   }
-  // lastRealIdx is the last ACTIVE/REST/WARMUP/INTERVAL lap. Anything after is cooldown.
+  let lastRealIdx=laps.length-1;
+  if(trailingStart<laps.length){
+    const firstStep=laps[trailingStart].wktStepIndex;
+    if(firstStep!==null&&firstStep!==undefined){
+      // Reliable step data: laps sharing firstStep = descanso, rest = cooldown
+      lastRealIdx=trailingStart-1;
+      for(let i=trailingStart;i<laps.length;i++){
+        if(laps[i].wktStepIndex===firstStep)lastRealIdx=i;
+        else break;
+      }
+    } else {
+      // No wktStepIndex: first trailing lap = descanso, rest = cooldown
+      lastRealIdx=trailingStart;
+    }
+  }
   const cooldownLaps=laps.slice(lastRealIdx+1);
   const mainLaps=laps.slice(0,lastRealIdx+1);
 
@@ -1741,7 +1758,7 @@ function fromRawGarmin(raw){
     const synthLap={averageHR:wHR,duration:totDur,hrTimeInZone:mergeHrZones(cooldownLaps)};
     const subLaps=cooldownLaps.length>1?cooldownLaps.map((lap)=>{
       var cad=lap.avgRunningCadence||lap.averageRunCadence||lap.avg_running_cadence||lap.avg_cadence||lap.avg_run_cadence||lap.averageCadence||lap.cadencia||lap.cadence||0;
-      return{label:lap.intensityType==='COOLDOWN'?'Enfriamiento':'Recuperación',_intensityType:lap.intensityType,
+      return{label:'Enfriamiento',_intensityType:'COOLDOWN',
         vuelta:lapRange([lap]),
         speed:lap.averageSpeed,dist_km:Math.round(lap.distance/10)/100,
         dur_raw_secs:lap.duration,dur_secs:Math.round(lap.duration),cadencia:Math.round(cad),
@@ -1749,9 +1766,8 @@ function fromRawGarmin(raw){
         fc_med:Math.round(lap.averageHR||0),fc_max:Math.round(lap.maxHR||0),
         zonas_lap:lapZones(lap)};
     }):null;
-    const hasCooldownType=cooldownLaps.some(l=>l.intensityType==='COOLDOWN');
     cooldown={
-      label:hasCooldownType?'Enfriamiento':'Recuperación',_intensityType:hasCooldownType?'COOLDOWN':'RECOVERY',
+      label:'Enfriamiento',_intensityType:'COOLDOWN',
       speed:wSpd,
       dist_km:Math.round(totDist/10)/100,
       dur_raw_secs:totDur,
