@@ -1908,8 +1908,8 @@ function isIOS(){
   return/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 }
 function captureScale(forDrive){
-  if(isIOS())return forDrive?2:1.5;
-  return forDrive?3.5:8;
+  if(isIOS())return 1.5;
+  return forDrive?2.5:8;
 }
 function captureFileBaseName(){
   const lbls=document.querySelectorAll('#render-target .lbl');
