@@ -2012,21 +2012,69 @@ function saveImg(){
 
 /* ── DRIVE LINK ── */
 const DRIVE_UPLOAD_URL_KEY='garminDriveUploadUrl';
-const DRIVE_DEFAULT_URL='https://script.google.com/macros/s/AKfycbwSNYHGTdt-0HjJi4pzqWpLPFYuab6QHND3Mzqe3E1QDgNhn3aGMsQo1rg99kSfh_bn/exec';
+const DRIVE_USERNAME_KEY='garminDriveUsername';
+
+// Mapa usuario → URL del Apps Script
+const DRIVE_USER_PROFILES={
+  'alejandrlucena':'https://script.google.com/macros/s/AKfycbwSNYHGTdt-0HjJi4pzqWpLPFYuab6QHND3Mzqe3E1QDgNhn3aGMsQo1rg99kSfh_bn/exec',
+};
+
+function _driveUrlForUsername(user){
+  return DRIVE_USER_PROFILES[(user||'').trim().toLowerCase()]||null;
+}
+
+function _resolveUploadUrl(){
+  const user=localStorage.getItem(DRIVE_USERNAME_KEY)||'';
+  const knownUrl=_driveUrlForUsername(user);
+  if(knownUrl)return knownUrl;
+  return localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
+}
+
+// Devuelve la URL resuelta, o null si el usuario cancela.
+function _ensureUploadUrl(){
+  const existing=_resolveUploadUrl();
+  if(existing)return existing;
+
+  // Sin configuración: pedir usuario
+  const user=prompt('¿Cuál es tu usuario de Drive?\n(ej: alejandrlucena)','');
+  if(user===null)return null;
+  const cleanUser=user.trim().toLowerCase();
+  if(!cleanUser)return null;
+  localStorage.setItem(DRIVE_USERNAME_KEY,cleanUser);
+
+  const knownUrl=_driveUrlForUsername(cleanUser);
+  if(knownUrl)return knownUrl;
+
+  // Usuario desconocido: pedir URL manualmente
+  const url=prompt('Usuario no reconocido. Pega la URL del Google Apps Script (/exec):','');
+  if(!url)return null;
+  const cleanUrl=url.trim();
+  localStorage.setItem(DRIVE_UPLOAD_URL_KEY,cleanUrl);
+  return cleanUrl;
+}
 
 function configureDriveUpload(){
-  const currentUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'';
-  const url=prompt('Pega la URL del Google Apps Script (termina en /exec). Déjalo vacío para borrar.',currentUrl);
-  if(url===null)return !!currentUrl;
-  const cleanUrl=url.trim();
-  if(cleanUrl)localStorage.setItem(DRIVE_UPLOAD_URL_KEY,cleanUrl);
-  else localStorage.removeItem(DRIVE_UPLOAD_URL_KEY);
-  return !!cleanUrl;
+  const currentUser=localStorage.getItem(DRIVE_USERNAME_KEY)||'';
+  const user=prompt('Usuario de Drive (déjalo vacío para borrar la configuración):',currentUser);
+  if(user===null)return;
+  const cleanUser=user.trim().toLowerCase();
+  if(!cleanUser){
+    localStorage.removeItem(DRIVE_USERNAME_KEY);
+    localStorage.removeItem(DRIVE_UPLOAD_URL_KEY);
+    return;
+  }
+  localStorage.setItem(DRIVE_USERNAME_KEY,cleanUser);
+  if(!_driveUrlForUsername(cleanUser)){
+    const url=prompt('Usuario no reconocido. Pega la URL del Apps Script (/exec):',localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||'');
+    if(url&&url.trim())localStorage.setItem(DRIVE_UPLOAD_URL_KEY,url.trim());
+  }
 }
 
 function getImageLink(){
   const btn=document.getElementById('btn-link-img');
-  let uploadUrl=localStorage.getItem(DRIVE_UPLOAD_URL_KEY)||DRIVE_DEFAULT_URL;
+  const uploadUrl=_ensureUploadUrl();
+  if(!uploadUrl){btn.textContent='Obtener link';btn.disabled=false;return;}
+
   const origText=btn.textContent;
   btn.textContent='Generando...';
   btn.disabled=true;
@@ -2062,9 +2110,9 @@ function getImageLink(){
       btn.textContent=origText;
       btn.disabled=false;
       alert('Error al subir:\n\n'+err.message
-        +'\n\nComprueba:\n• El script está desplegado como Web App\n• Ejecutar como: Tú\n• Acceso: Cualquier usuario\n\nPara cambiar la URL: localStorage.removeItem("garminDriveUploadUrl")');
+        +'\n\nComprueba:\n• El script está desplegado como Web App\n• Ejecutar como: Tú\n• Acceso: Cualquier usuario');
     });
-  }, true); // escala reducida solo para Drive
+  }, true);
 }
 
 /* ── SHARED CAPTURE ── */
