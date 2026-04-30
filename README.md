@@ -1,4 +1,4 @@
-# Garmin Entreno
+# Garmin Entreno · by AlejandrLucena
 
 Visualizador de entrenamientos de Garmin Connect. Pega el JSON que te da Claude o ChatGPT y obtén una tabla desglosada por vueltas, zonas de FC y grupos de intervalos — lista para compartir como imagen.
 
@@ -59,11 +59,39 @@ Los ajustes se guardan en el navegador (localStorage) y se aplican automáticame
 
 Una vez cargada la actividad, tres botones:
 
-- **Guardar imagen** — descarga un PNG de alta resolución de la tabla completa
+- **Generar imagen** — descarga un PNG de alta resolución de la tabla completa
 - **Copiar imagen** — copia la imagen al portapapeles (para pegar en WhatsApp, Notas, etc.)
 - **Obtener link** — sube la imagen a Google Drive y copia el link al portapapeles
 
-El botón "Obtener link" requiere configurar un Google Apps Script propio la primera vez (la web te guía). El script de ejemplo está en [`GarminDriveUpload_AppScript.js`](GarminDriveUpload_AppScript.js).
+Todas las imágenes incluyen la firma `by AlejandrLucena` en el pie.
+
+---
+
+## Configurar "Obtener link" (Google Drive)
+
+El botón **Obtener link** sube la imagen a tu propia carpeta de Google Drive y te devuelve un link compartible.
+
+### Paso 1 — Crear el Apps Script
+
+1. Ve a [script.google.com](https://script.google.com) con tu cuenta Google
+2. Crea un nuevo proyecto
+3. Copia el contenido de [`GarminDriveUpload_AppScript.js`](GarminDriveUpload_AppScript.js)
+4. Reemplaza `PON_AQUI_EL_ID_DE_TU_CARPETA_DE_DRIVE` con el ID de tu carpeta de Drive
+   - Abre la carpeta en Drive → copia el ID de la URL: `drive.google.com/drive/folders/ESTE_ES_EL_ID`
+5. Despliega como **Aplicación web**:
+   - Implementar → Nueva implementación
+   - Tipo: Aplicación web
+   - Ejecutar como: **Yo**
+   - Quién puede acceder: **Cualquier usuario**
+6. Copia la URL `/exec` que te da Google
+
+### Paso 2 — Conectar con la web
+
+Al hacer clic en **Obtener link** por primera vez, la web te pide un nombre de usuario.
+- Si ya está registrado en el mapa interno, se configura automáticamente
+- Si no, pega la URL del Apps Script cuando te la pida
+
+La configuración se guarda en el navegador (localStorage) y no vuelve a preguntarlo.
 
 ---
 

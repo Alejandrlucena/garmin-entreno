@@ -84,6 +84,8 @@ body{background:#0b0c0f;color:#eaeaea;font-family:-apple-system,BlinkMacSystemFo
 
 /* ── OUTPUT ── */
 #output{background:#0b0c0f}
+.firma-web{font-size:10px;color:#2a2a30;text-align:right;padding:6px 12px 8px;letter-spacing:.5px;user-select:none}
+.capturing .firma-web{color:#555;font-size:11px}
 .placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:60px 24px;gap:8px;min-height:200px}
 .placeholder-icon{font-size:32px;opacity:.15}
@@ -357,7 +359,7 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
 <!-- ── EDITOR ── -->
 <div class="editor">
   <div class="editor-top">
-    <span class="editor-title">Garmin Entreno</span>
+    <span class="editor-title">Garmin Entreno</span><span style="font-size:9px;color:#222;letter-spacing:.3px;margin-left:6px">by AlejandrLucena</span>
     <div class="action-row-main">
       <button class="btn btn-render" onclick="render()">▶ Renderizar</button>
       <button class="btn btn-fit" onclick="document.getElementById('fit-input').click()">📁 Garmin</button>
@@ -1889,7 +1891,7 @@ function render(){
     lista=[parsed];
   }
 
-  document.getElementById('output').innerHTML=`<div id="render-target">${lista.map(renderActividad).join('')}</div>`;
+  document.getElementById('output').innerHTML=`<div id="render-target">${lista.map(renderActividad).join('')}<div class="firma-web">by AlejandrLucena</div></div>`;
   document.getElementById('btn-img').style.display='inline-flex';
   document.getElementById('btn-copy-img').style.display='inline-flex';
   const _linkBtn=document.getElementById('btn-link-img');
