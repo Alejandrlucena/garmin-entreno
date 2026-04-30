@@ -2016,7 +2016,7 @@ const DRIVE_USERNAME_KEY='garminDriveUsername';
 
 // Mapa usuario → URL del Apps Script
 const DRIVE_USER_PROFILES={
-  'alejandrlucena':'https://script.google.com/macros/s/AKfycbwSNYHGTdt-0HjJi4pzqWpLPFYuab6QHND3Mzqe3E1QDgNhn3aGMsQo1rg99kSfh_bn/exec',
+  'alejandrlucena':'https://script.google.com/macros/s/AKfycbxZhpcdawOciPNkISsWoQyZqBuNcSXWBUexZIW0J0MpCup0uB7Z1-1DwFDDJ6YFQIs/exec',
 };
 
 function _driveUrlForUsername(user){
@@ -2036,7 +2036,7 @@ function _ensureUploadUrl(){
   if(existing)return existing;
 
   // Sin configuración: pedir usuario
-  const user=prompt('¿Cuál es tu usuario de Drive?\n(ej: alejandrlucena)','');
+  const user=prompt('¿Cuál es tu usuario de Drive?','');
   if(user===null)return null;
   const cleanUser=user.trim().toLowerCase();
   if(!cleanUser)return null;
@@ -2055,7 +2055,7 @@ function _ensureUploadUrl(){
 
 function configureDriveUpload(){
   const currentUser=localStorage.getItem(DRIVE_USERNAME_KEY)||'';
-  const user=prompt('Usuario de Drive (déjalo vacío para borrar la configuración):',currentUser);
+  const user=prompt('Usuario de Drive (vacío para borrar configuración):',currentUser);
   if(user===null)return;
   const cleanUser=user.trim().toLowerCase();
   if(!cleanUser){
