@@ -2,7 +2,7 @@
 
 Visualizador de entrenamientos de Garmin Connect. Pega el JSON que te da Claude o ChatGPT y obtén una tabla desglosada por vueltas, zonas de FC y grupos de intervalos — lista para compartir como imagen.
 
-**Demo:** https://luce23.github.io/garmin-entreno
+**Demo:** https://Alejandrlucena.github.io/garmin-entreno
 
 ---
 
@@ -117,4 +117,4 @@ Un único fichero `index.html` sin dependencias externas en servidor. Usa:
 
 ## Proyectos relacionados
 
-- [garmin-coach-mcp](https://github.com/luce23/garmin-coach-mcp) — Servidor MCP que conecta Garmin Connect con Claude y ChatGPT. Genera el JSON que esta web visualiza.
+- [garmin-coach-mcp](https://github.com/Alejandrlucena/garmin-coach-mcp) — Servidor MCP que conecta Garmin Connect con Claude y ChatGPT. Genera el JSON que esta web visualiza.
