@@ -703,7 +703,8 @@ function _hideBtn(idx){
 function _normLabel(label){
   if(!label)return label;
   var l=label.trim();
-  if(/^(cooldown|cool.?down|enfriamiento|recovery|vuelta.?calma)$/i.test(l))return'Recuperación';
+  if(/^(cooldown|cool.?down|enfriamiento)$/i.test(l))return'Enfriamiento';
+  if(/^(recovery|vuelta.?calma)$/i.test(l))return'Recuperación';
   if(/^(warmup|warm.?up|calentamiento)$/i.test(l))return'Calentamiento';
   if(/^(rest|rec\s*\d*|recuperaci[oó]n\s*\d*)$/i.test(l)){
     return'Descanso';
@@ -873,13 +874,13 @@ var allR=[];
 
   // Apply label normalization to all rows
   if(warmup)warmup.label=_normLabel(warmup.label)||'Calentamiento';
-  if(cooldown)cooldown.label=_normLabel(cooldown.label)||'Recuperación';
+  if(cooldown)cooldown.label=_normLabel(cooldown.label)||(cooldown._intensityType==='COOLDOWN'?'Enfriamiento':'Recuperación');
   seriesArr.forEach(function(s){s.label=_normLabel(s.label)||s.label;});
   // Re-detect cooldown after normalization
   if(!cooldown&&seriesArr.length){
     var lastL=seriesArr[seriesArr.length-1];
     if(/^(recuperaci[oó]n|enfriamiento)$/i.test(lastL.label||'')){
-      cooldown=seriesArr.pop(); cooldown.label='Recuperación';
+      cooldown=seriesArr.pop(); if(!cooldown.label||/^descanso$/i.test(cooldown.label))cooldown.label='Enfriamiento';
     }
   }
 
@@ -1140,7 +1141,7 @@ var allR=[];
     });
 
     if(cooldown){
-      rows+=_summaryRow(cooldown,'phase-header','Recuperación',_cumTimeSecs+(cooldown.dur_raw_secs||cooldown.dur_secs||0),cooldown.zonas_lap);
+      rows+=_summaryRow(cooldown,'phase-header',cooldown.label||'Recuperación',_cumTimeSecs+(cooldown.dur_raw_secs||cooldown.dur_secs||0),cooldown.zonas_lap);
       if(cooldown.subLaps){
         cooldown.subLaps.forEach(function(sub){
           rows+=_dataRow(sub,lastActiveLap,false,false,'group-lap',20,true);
@@ -1325,12 +1326,14 @@ function fromChatGPTNested(raw){
   let activeCount=0;
 
   raw.series.forEach(sg=>{
-    const lbl=(sg.label||'').toLowerCase();
-    const isWarm=lbl.includes('warmup')||lbl.includes('calentamiento');
-    const isCool=lbl.includes('cooldown')||lbl.includes('recuperaci')||lbl.includes('recovery');
+      const lbl=(sg.label||'').toLowerCase();
+      const isWarm=lbl.includes('warmup')||lbl.includes('calentamiento');
+      // Only COOLDOWN types are cooldown. RECOVERY between intervals is NOT cooldown.
+      const isCool=lbl.includes('cooldown')||lbl.includes('enfriamiento');
 
-    (sg.laps||[]).forEach(lap=>{
-      const isRec=lap.type==='recovery'||lap.type==='rest';
+      (sg.laps||[]).forEach(lap=>{
+        // RECOVERY = descanso between intervals; COOLDOWN = enfriamiento at end
+        const isRec=lap.type==='recovery'||lap.type==='rest';
       const s={
         label:'',
         speed:lap.speed||0,
@@ -1344,7 +1347,7 @@ function fromChatGPTNested(raw){
       };
 
       if(isWarm&&!series.length&&!warmup){s.label='Calentamiento';warmup=s;}
-      else if(isCool&&!isRec){s.label='Recuperación';cooldown=s;}
+      else if(isCool&&!isRec){s.label=(lbl.includes('cooldown')||lbl.includes('enfriamiento'))?'Enfriamiento':'Recuperación';cooldown=s;}
       else if(isRec){
         s.label='Descanso';series.push(s);
       } else {
@@ -1442,7 +1445,7 @@ function _normLap(lap){
     'ACTIVE':'ACTIVE','INTERVAL_ACTIVE':'ACTIVE','RUN':'ACTIVE','RWD_RUN':'ACTIVE',
     'INTERVAL':'ACTIVE','REGULAR':'ACTIVE',
     'REST':'REST','INTERVAL_RECOVERY':'REST','RWD_STAND':'REST','RWD_STOP':'REST','RWD_WALK':'REST',
-    'RECOVERY':'RECOVERY','COOLDOWN':'RECOVERY','COOL_DOWN':'RECOVERY',
+    'RECOVERY':'RECOVERY','COOLDOWN':'COOLDOWN','COOL_DOWN':'COOLDOWN',
     'ACTIVE_FINISH':'ACTIVE','FINISH':'ACTIVE'
   };
   const intensity=intensityMap[raw_type]||'ACTIVE';
@@ -1696,10 +1699,11 @@ function fromRawGarmin(raw){
   }
 
   // Interval mode: classify RECOVERY laps as descansos (between intervals) or cooldown (at end)
-  // Find the last non-RECOVERY lap index. RECOVERY laps after it = cooldown. Before = descanso.
+  // Find the last non-COOLDOWN lap index. Only COOLDOWN marks cooldown.
+  // RECOVERY laps between intervals stay with main workout.
   let lastRealIdx=-1;
   for(let i=laps.length-1;i>=0;i--){
-    if(laps[i].intensityType!=='RECOVERY'){lastRealIdx=i;break;}
+    if(laps[i].intensityType!='COOLDOWN'){lastRealIdx=i;break;}
   }
   // lastRealIdx is the last ACTIVE/REST/WARMUP/INTERVAL lap. Anything after is cooldown.
   const cooldownLaps=laps.slice(lastRealIdx+1);
@@ -1737,7 +1741,7 @@ function fromRawGarmin(raw){
     const synthLap={averageHR:wHR,duration:totDur,hrTimeInZone:mergeHrZones(cooldownLaps)};
     const subLaps=cooldownLaps.length>1?cooldownLaps.map((lap)=>{
       var cad=lap.avgRunningCadence||lap.averageRunCadence||lap.avg_running_cadence||lap.avg_cadence||lap.avg_run_cadence||lap.averageCadence||lap.cadencia||lap.cadence||0;
-      return{label:'Recuperación',_intensityType:'RECOVERY',
+      return{label:lap.intensityType==='COOLDOWN'?'Enfriamiento':'Recuperación',_intensityType:lap.intensityType,
         vuelta:lapRange([lap]),
         speed:lap.averageSpeed,dist_km:Math.round(lap.distance/10)/100,
         dur_raw_secs:lap.duration,dur_secs:Math.round(lap.duration),cadencia:Math.round(cad),
@@ -1745,8 +1749,9 @@ function fromRawGarmin(raw){
         fc_med:Math.round(lap.averageHR||0),fc_max:Math.round(lap.maxHR||0),
         zonas_lap:lapZones(lap)};
     }):null;
+    const hasCooldownType=cooldownLaps.some(l=>l.intensityType==='COOLDOWN');
     cooldown={
-      label:'Recuperación',_intensityType:'RECOVERY',
+      label:hasCooldownType?'Enfriamiento':'Recuperación',_intensityType:hasCooldownType?'COOLDOWN':'RECOVERY',
       speed:wSpd,
       dist_km:Math.round(totDist/10)/100,
       dur_raw_secs:totDur,
