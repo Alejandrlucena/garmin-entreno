@@ -1892,7 +1892,10 @@ function render(){
   document.getElementById('output').innerHTML=`<div id="render-target">${lista.map(renderActividad).join('')}</div>`;
   document.getElementById('btn-img').style.display='inline-flex';
   document.getElementById('btn-copy-img').style.display='inline-flex';
-  document.getElementById('btn-link-img').style.display='inline-flex';
+  const _linkBtn=document.getElementById('btn-link-img');
+  _linkBtn.style.display='inline-flex';
+  _linkBtn.textContent='Obtener link';
+  _linkBtn.disabled=false;
   document.getElementById('filter-bar').classList.add('visible');
   // En móvil, scroll al output
   if(window.innerWidth<900){
