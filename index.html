@@ -2034,7 +2034,7 @@ function getImageLink(){
   _captureEl(canvas=>{
     btn.textContent='Subiendo...';
 
-    const base64=canvas.toDataURL('image/jpeg',0.93).split(',')[1]||'';
+    const base64=canvas.toDataURL('image/jpeg',0.92).split(',')[1]||'';
     const fileName=captureFileBaseName()+'.jpg';
     fetch(uploadUrl,{
       method:'POST',
