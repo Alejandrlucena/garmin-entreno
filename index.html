@@ -1126,7 +1126,7 @@ var allR=[];
       }
       // interval group
       var syn=_synthLap(g.activeLaps,'Carrera');
-      syn.vuelta=_rangeFromRows(g.activeLaps);
+      syn.vuelta=_rangeFromRows(g.laps);
       var zonaSyn=_synthLap(g.laps,'');
       rows+=_summaryRow(syn,'group-header','Carrera',_cumTimeSecs+(syn.dur_raw_secs||syn.dur_secs||0),zonaSyn.zonas_lap,lastGroupSyn);
 
