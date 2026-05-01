@@ -12,7 +12,7 @@ Visualizador de entrenamientos de Garmin Connect. Carga un `.fit`/`.zip`, conéc
 Arrastra un `.fit` o `.zip` al recuadro del editor, o usa el botón **📁 Garmin**.
 
 ### Opción 2 — Conector directo
-Pulsa **🔌 Conector → ⚙** para introducir la URL de tu servidor, luego pulsa **🔌 Conector** → elige actividad → se carga automáticamente, sin subir ningún archivo.
+Pulsa **🔌 Conector → ⚙ Configurar** para introducir la URL de tu servidor, luego pulsa **🔌 Conector** → elige actividad → se carga automáticamente, sin subir ningún archivo.
 
 - Funciona desde **móvil y escritorio**
 - Requiere tener [garmin-coach-mcp](https://github.com/Alejandrlucena/garmin-coach-mcp) desplegado en Railway o corriendo en local
@@ -55,12 +55,15 @@ Los grupos de intervalos incluyen una fila de resumen con totales de tiempo, dis
 
 | Botón | Acción |
 |-------|--------|
-| 🌐 Connect | Abre Garmin Connect en el navegador |
-| ⚡ Zonas FC | Configura las zonas de FC |
+| 🌐 Garmin Connect | Abre Garmin Connect en el navegador |
+| ⚡ Zonas FC | Activa o desactiva las zonas de FC (toggle on/off) |
+| ⚙ Configurar (Zonas FC) | Abre/cierra el panel de configuración de zonas |
 | 📤 Drive | Sube la vista actual a Drive y copia el link |
 | 🔌 Conector | Carga actividades desde el servidor Garmin MCP |
+| ⚙ Configurar (Drive/Conector) | Abre el panel de configuración unificado |
 
-Los botones **Drive** y **Conector** son botones partidos: la mitad superior lanza la acción y la mitad inferior **⚙ Configurar** abre los ajustes sin interferir.
+**Drive** y **Conector** comparten un único botón partido con zona **⚙ Configurar** en la parte inferior.
+**Zonas FC** también es un botón partido: el área principal activa/desactiva las zonas y el área **⚙** abre la configuración.
 
 ---
 
@@ -75,6 +78,10 @@ La web admite cuatro métodos de cálculo:
 
 Los ajustes se guardan en el navegador (localStorage) y se aplican automáticamente en cada carga.
 
+Flujo de uso:
+1. Pulsa **⚙ Configurar** bajo el botón Zonas FC, introduce tu método y valores, pulsa **Aplicar zonas**
+2. A partir de ahí, el botón **⚡ Zonas FC** activa y desactiva las zonas con un solo clic
+
 ---
 
 ## Guardar y compartir
@@ -87,30 +94,27 @@ Una vez cargada la actividad, tres botones:
 
 Todas las imágenes incluyen la firma `by AlejandrLucena` en el pie.
 
+El link se copia automáticamente al portapapeles al obtenerse. En iOS Safari, si la copia automática falla, aparece un botón **Copiar** en el toast de confirmación.
+
 ---
 
-## Configurar "Obtener link" (Google Drive)
+## Configuración unificada (⚙ Configurar)
 
-El botón **📤 Drive → ⚙** te pide la URL de tu propio Google Apps Script. Una vez guardada se conecta automáticamente en siguientes sesiones.
+El panel único de configuración gestiona:
 
-### Crear el Apps Script
+- **Usuario** — alias local que se usa para recuperar tu configuración en otros dispositivos
+- **URL del servidor Garmin MCP** — dónde está corriendo [garmin-coach-mcp](https://github.com/Alejandrlucena/garmin-coach-mcp)
+- **URL de Drive (Apps Script)** — URL `/exec` de tu Google Apps Script para subir imágenes
+
+Al guardar el servidor, la URL de Drive se sincroniza automáticamente desde el volumen de Railway — no hace falta reintroducirla en cada dispositivo.
+
+### Crear el Apps Script para Drive
 
 1. Ve a [script.google.com](https://script.google.com) con tu cuenta Google
 2. Crea un nuevo proyecto y copia el contenido de [`GarminDriveUpload_AppScript.js`](GarminDriveUpload_AppScript.js)
 3. Reemplaza `PON_AQUI_EL_ID_DE_TU_CARPETA_DE_DRIVE` con el ID de tu carpeta de Drive
 4. Despliega como **Aplicación web** (ejecutar como: Yo · acceso: Cualquier usuario)
-5. Copia la URL `/exec`
-
----
-
-## Configurar el Conector Garmin
-
-El botón **🔌 Conector → ⚙** te pide la URL de tu propio servidor Garmin MCP.
-
-- Despliega [garmin-coach-mcp](https://github.com/Alejandrlucena/garmin-coach-mcp) en Railway y pega la URL que te dé (`https://tuservicio.up.railway.app`)
-- O arráncalo en local y usa `http://localhost:8000`
-- Las URLs con sufijo `/mcp` o `/sse` se limpian automáticamente
-- Sin URL configurada, el conector muestra un mensaje de ayuda en lugar de fallar en silencio
+5. Copia la URL `/exec` y pégala en ⚙ Configurar
 
 ---
 
