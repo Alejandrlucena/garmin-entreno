@@ -376,6 +376,10 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
 .split-cfg:hover .split-cfg-label{color:#9aafcc}
 .action-btn-split.ab-zones-split{border-bottom-color:#3a2a0e}
 .action-btn-split.ab-zones-split:hover{border-bottom-color:#c07820}
+.action-btn-split.ab-zones-split.zones-on{border-bottom-color:#1f4c42}
+.action-btn-split.ab-zones-split.zones-on .split-main{background:#0d1e1a}
+.action-btn-split.ab-zones-split.zones-on .action-btn-icon{filter:none}
+.action-btn-split.ab-zones-split.zones-on .action-btn-label{color:#5eead4}
 .action-btn-split.ab-share{border-bottom-color:#2a2550}
 .action-btn-split.ab-share:hover{border-bottom-color:#604aaa}
 /* ── DUAL main (Drive + Conector) ── */
@@ -485,7 +489,7 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
   </div>
   <div class="action-btn-split ab-share">
     <div class="split-dual">
-      <button class="split-dual-btn" onclick="getImageLink()">
+      <button class="split-dual-btn" id="btn-drive-bar" onclick="getImageLink()">
         <span class="action-btn-icon">📤</span>
         <span class="action-btn-label">Drive</span>
       </button>
@@ -2208,16 +2212,27 @@ function _ensureUploadUrl(){
 function configureDriveUpload(){ openSettings(); }
 
 function getImageLink(){
-  const btn=document.getElementById('btn-link-img');
-  const uploadUrl=_ensureUploadUrl();
-  if(!uploadUrl){btn.textContent='Obtener link';btn.disabled=false;return;}
+  const uploadUrl=_resolveUploadUrl();
+  if(!uploadUrl){
+    _toast('Configura la URL de Drive primero (⚙ Configurar)', 'info');
+    openSettings();
+    return;
+  }
+  const json=document.getElementById('json-input').value.trim();
+  if(!json){ _toast('Carga una actividad primero', 'error'); return; }
 
-  const origText=btn.textContent;
-  btn.textContent='Generando...';
-  btn.disabled=true;
+  const bar=document.getElementById('btn-drive-bar');
+  const barLbl=bar&&bar.querySelector('.action-btn-label');
+  const origBarLbl=barLbl?barLbl.textContent:'Drive';
+  const shareBtn=document.getElementById('btn-link-img');
+  const origShareText=shareBtn?shareBtn.textContent:'Obtener link';
+  if(bar){bar.disabled=true;}
+  if(barLbl){barLbl.textContent='Generando...';}
+  if(shareBtn){shareBtn.textContent='Generando...';shareBtn.disabled=true;}
 
   _captureEl(canvas=>{
-    btn.textContent='Subiendo...';
+    if(barLbl){barLbl.textContent='Subiendo...';}
+    if(shareBtn){shareBtn.textContent='Subiendo...';}
 
     const base64=canvas.toDataURL('image/jpeg',0.97).split(',')[1]||'';
     const fileName=captureFileBaseName()+'.jpg';
@@ -2232,14 +2247,18 @@ function getImageLink(){
     .then(result=>{
       if(!result.ok&&!result.url)throw new Error(result.error||'El script no devolvió URL.');
       const url=result.url;
-      btn.textContent='✓ Listo';
-      btn.disabled=false;
+      if(bar){bar.disabled=false;}
+      if(barLbl){barLbl.textContent='✓ Listo';}
+      setTimeout(()=>{if(barLbl)barLbl.textContent=origBarLbl;},2500);
+      if(shareBtn){shareBtn.textContent='✓ Listo';shareBtn.disabled=false;}
+      setTimeout(()=>{if(shareBtn)shareBtn.textContent=origShareText;},2500);
       _showLinkToast(url);
     })
     .catch(err=>{
-      btn.textContent=origText;
-      btn.disabled=false;
-      _toast('Error al subir: ' + err.message, 'error');
+      if(bar){bar.disabled=false;}
+      if(barLbl){barLbl.textContent=origBarLbl;}
+      if(shareBtn){shareBtn.textContent=origShareText;shareBtn.disabled=false;}
+      _toast('Error al subir: '+err.message, 'error');
     });
   }, true);
 }
@@ -2749,13 +2768,25 @@ function openHRZonesConfig() {
 }
 
 function toggleHRZones() {
-  var content = document.getElementById('hr-zones-content');
-  if (content.style.display === 'none') {
-    content.style.display = 'block';
-    toggleHRMethod();
-  } else {
-    content.style.display = 'none';
+  if (!window.customHRZones) {
+    if (localStorage.getItem('customHRZones')) {
+      applyHRZones();
+      _updateZonesBtn();
+    } else {
+      openHRZonesConfig();
+    }
+    return;
   }
+  window.customHRZonesActive = !window.customHRZonesActive;
+  _updateZonesBtn();
+  var json = document.getElementById('json-input').value.trim();
+  if (json) render();
+  _toast(window.customHRZonesActive ? 'Zonas FC activadas' : 'Zonas FC desactivadas', 'info');
+}
+
+function _updateZonesBtn() {
+  var wrap = document.querySelector('.ab-zones-split');
+  if (wrap) wrap.classList.toggle('zones-on', !!(window.customHRZonesActive && window.customHRZones));
 }
 
 function toggleHRMethod() {
@@ -2960,6 +2991,7 @@ function applyHRZones() {
     saveZones();
   }
   recomputeHRZonesFromRecords();
+  _updateZonesBtn();
   var json = document.getElementById('json-input').value.trim();
   if (json) {
     render();
