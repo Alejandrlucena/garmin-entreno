@@ -2107,25 +2107,34 @@ function blobToDataUrl(blob){
     reader.readAsDataURL(blob);
   });
 }
-function openIOSave(canvas){
+function openIOSave(canvas, btn){
   let dataUrl='';
-  try{dataUrl=canvas.toDataURL('image/jpeg',0.92);}catch(e){
-    _toast('Imagen demasiado grande. Usa "Generar imagen" con menos actividades.', 'error');
+  try{dataUrl=canvas.toDataURL('image/jpeg',0.78);}catch(e){
+    _toast('Error al generar la imagen.','error');
+    if(btn){btn.textContent='Copiar imagen';btn.disabled=false;}
     return;
   }
-  const win=window.open('','_blank');
-  if(win){
-    win.document.write(`<html><head>
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      <style>body{margin:0;background:#0b0c0f;display:flex;flex-direction:column;align-items:center;padding:20px;gap:12px;font-family:-apple-system,sans-serif;color:#9aa0a6}
-      p{font-size:14px;text-align:center;line-height:1.6}strong{color:#eaeaea;display:block;margin-top:4px;font-size:16px}
-      img{max-width:100%;border-radius:8px}</style></head><body>
-      <p>Mantén pulsada la imagen<strong>→ Guardar en Fotos</strong><span style="font-size:12px;color:#555">o compártela directamente</span></p>
-      <img src="${dataUrl}"></body></html>`);
-    win.document.close();
-  } else {
-    _toast('Permite las ventanas emergentes en Safari.', 'error');
-  }
+  if(btn){btn.textContent='Copiar imagen';btn.disabled=false;}
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:3000;'
+    +'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+    +'padding:16px;gap:12px;-webkit-overflow-scrolling:touch';
+  overlay.onclick=function(e){if(e.target===overlay)overlay.remove();};
+  const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  overlay.innerHTML=
+    '<p style="color:#9aa0a6;font-size:13px;text-align:center;margin:0">'
+    +(isMobile?'Mantén pulsada la imagen → <strong style="color:#eaeaea">Guardar en Fotos</strong>'
+              :'<strong style="color:#eaeaea">Vista previa</strong>')+'</p>'
+    +'<img src="'+dataUrl+'" style="max-width:100%;max-height:65vh;border-radius:8px;display:block">'
+    +'<div style="display:flex;gap:10px">'
+    +'<a href="'+dataUrl+'" download="entreno.jpg" '
+    +'style="background:#1a3a2a;border:1px solid #2a5a3a;border-radius:8px;padding:9px 18px;'
+    +'color:#6dbf8a;font-size:12px;font-weight:700;text-decoration:none">Descargar</a>'
+    +'<button onclick="this.closest(\'div\').parentNode.remove()" '
+    +'style="background:#111;border:1px solid #222;border-radius:8px;padding:9px 14px;'
+    +'color:#666;font-size:12px;cursor:pointer">Cerrar</button>'
+    +'</div>';
+  document.body.appendChild(overlay);
 }
 function _prepareCaptureWrapper(wrapper, clone){
   wrapper.classList.add('capturing');
@@ -2355,6 +2364,14 @@ function copyImg(){
 
   const scale=captureScale();
 
+  // Crear ClipboardItem con promesa ANTES del renderizado (mantiene el user gesture en Chrome 93+)
+  let resolveBlob, rejectBlob;
+  const blobPromise=new Promise((res,rej)=>{resolveBlob=res;rejectBlob=rej;});
+  let clipPromise=null;
+  if(typeof ClipboardItem!=='undefined'&&navigator.clipboard&&navigator.clipboard.write){
+    try{clipPromise=navigator.clipboard.write([new ClipboardItem({'image/png':blobPromise})]);}catch(e){clipPromise=null;}
+  }
+
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     setTimeout(()=>{
     const w=Math.max(wrapper.scrollWidth,clone.scrollWidth)+16;
@@ -2365,20 +2382,24 @@ function copyImg(){
       scrollX:0,scrollY:0,allowTaint:false,imageTimeout:0,letterRendering:true
     }).then(canvas=>{
       document.body.removeChild(wrapper);
-
-      // Intentar copiar al portapapeles (funciona en PC/Mac)
       canvas.toBlob(blob=>{
-        if(!blob){openIOSave(canvas);return;}
-        navigator.clipboard.write([new ClipboardItem({'image/png':blob})])
-          .then(()=>{
-            btn.textContent='✓ Copiada';
-            setTimeout(()=>{btn.textContent='Copiar imagen';btn.disabled=false;},2500);
-          })
-          .catch(e=>{openIOSave(canvas);});
+        if(!blob){rejectBlob(new Error('toBlob'));openIOSave(canvas,btn);return;}
+        resolveBlob(blob);
+        if(clipPromise){
+          clipPromise
+            .then(()=>{btn.textContent='✓ Copiada';setTimeout(()=>{btn.textContent='Copiar imagen';btn.disabled=false;},2500);})
+            .catch(()=>{openIOSave(canvas,btn);});
+        } else {
+          // Fallback: intento directo (para Safari/Firefox)
+          navigator.clipboard.write([new ClipboardItem({'image/png':blob})])
+            .then(()=>{btn.textContent='✓ Copiada';setTimeout(()=>{btn.textContent='Copiar imagen';btn.disabled=false;},2500);})
+            .catch(()=>{openIOSave(canvas,btn);});
+        }
       },'image/png');
     }).catch(e=>{
       document.body.removeChild(wrapper);
-      _toast('Error: ' + e.message, 'error');
+      rejectBlob(e);
+      _toast('Error: '+e.message,'error');
       btn.textContent='Copiar imagen';btn.disabled=false;
     });
     });
