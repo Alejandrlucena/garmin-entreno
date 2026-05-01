@@ -578,12 +578,11 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
         <label style="display:block;font-size:11px;font-weight:700;color:#505870;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Nombre de usuario</label>
         <div style="display:flex;gap:6px">
           <input id="cfg-username" type="text" placeholder="tu nombre de usuario" autocomplete="off" autocorrect="off" autocapitalize="off"
-            list="cfg-username-list"
             style="flex:1;min-width:0;background:#0c0d11;border:1px solid #1e2130;border-radius:8px;padding:9px 12px;font-size:13px;color:#d0d4de;outline:none">
-          <datalist id="cfg-username-list"></datalist>
           <button id="cfg-import-btn" onclick="settingsImportUser()" style="background:#1a2035;border:1px solid #1e2130;border-radius:8px;padding:0 14px;font-size:11px;font-weight:700;color:#7aa2d4;cursor:pointer;white-space:nowrap">Importar</button>
         </div>
-        <div style="font-size:10px;color:#353a50;margin-top:4px">Alias local — escribe tu nombre y pulsa <b style="color:#4a6a94">Importar</b> para cargar tu configuración guardada</div>
+        <div id="cfg-saved-users" style="display:none;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        <div style="font-size:10px;color:#353a50;margin-top:4px">Alias local — escribe tu nombre y pulsa <b style="color:#4a6a94">Importar</b>, o selecciona uno guardado arriba</div>
       </div>
 
       <div style="margin-bottom:6px">
@@ -3249,6 +3248,25 @@ function _parseFitBufferConnector(buf, filename) {
 }
 
 // ── PANEL DE AJUSTES UNIFICADO ──
+function _refreshSavedUsersChips() {
+  var wrap = document.getElementById('cfg-saved-users');
+  if (!wrap) return;
+  var aliases = _getAliases();
+  var keys = Object.keys(aliases);
+  if (!keys.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = keys.map(function(k) {
+    return '<button onclick="settingsLoadUser(\'' + k + '\')" '
+      + 'style="background:#101828;border:1px solid #1e2a40;border-radius:20px;padding:4px 12px;'
+      + 'font-size:11px;font-weight:600;color:#7aa2d4;cursor:pointer;white-space:nowrap">' + k + '</button>';
+  }).join('');
+}
+
+function settingsLoadUser(username) {
+  document.getElementById('cfg-username').value = username;
+  settingsImportUser();
+}
+
 function openSettings() {
   var user   = localStorage.getItem(CONNECTOR_USER_KEY) || '';
   var server = _getConnectorUrl();
@@ -3256,34 +3274,17 @@ function openSettings() {
   document.getElementById('cfg-username').value = user;
   document.getElementById('cfg-server').value   = server;
   document.getElementById('cfg-drive').value    = drive;
-  // Poblar datalist con usuarios guardados
-  var dl = document.getElementById('cfg-username-list');
-  if (dl) {
-    var aliases = _getAliases();
-    dl.innerHTML = Object.keys(aliases).map(function(k) {
-      return '<option value="' + k + '">';
-    }).join('');
-  }
+  _refreshSavedUsersChips();
   document.getElementById('settings-overlay').style.display = 'block';
   if (server && !drive) settingsLoadFromServer(true);
 }
 
 function settingsImportUser() {
   var username = document.getElementById('cfg-username').value.trim().toLowerCase();
-  var aliases  = _getAliases();
-  var keys     = Object.keys(aliases);
+  if (!username) { _toast('Escribe tu nombre de usuario primero', 'info'); return; }
 
-  if (!username) {
-    if (!keys.length) { _toast('No hay usuarios guardados aún', 'info'); return; }
-    _toast('Usuarios guardados: ' + keys.join(', '), 'info');
-    return;
-  }
-
-  var server = aliases[username];
-  if (!server) {
-    var match = keys.find(function(k) { return k.includes(username) || username.includes(k); });
-    if (match) server = aliases[match];
-  }
+  var aliases = _getAliases();
+  var server  = aliases[username];
   if (!server) { _toast('Usuario "' + username + '" no encontrado. Introduce la URL manualmente.', 'info'); return; }
 
   document.getElementById('cfg-server').value = server;
@@ -3356,13 +3357,16 @@ function settingsSave() {
 }
 
 function settingsClear() {
-  if (!confirm('¿Borrar toda la configuración?')) return;
+  if (!confirm('¿Borrar toda la configuración, incluidos los usuarios guardados?')) return;
   localStorage.removeItem(CONNECTOR_URL_KEY);
   localStorage.removeItem(CONNECTOR_USER_KEY);
   localStorage.removeItem(DRIVE_UPLOAD_URL_KEY);
+  localStorage.removeItem(CONNECTOR_ALIASES_KEY);
   document.getElementById('cfg-username').value = '';
   document.getElementById('cfg-server').value   = '';
   document.getElementById('cfg-drive').value    = '';
+  var wrap = document.getElementById('cfg-saved-users');
+  if (wrap) wrap.style.display = 'none';
   closeSettings();
   _toast('Configuración borrada.', 'info');
 }
