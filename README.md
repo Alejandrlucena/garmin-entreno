@@ -12,10 +12,10 @@ Visualizador de entrenamientos de Garmin Connect. Carga un `.fit`/`.zip`, conéc
 Arrastra un `.fit` o `.zip` al recuadro del editor, o usa el botón **📁 Garmin**.
 
 ### Opción 2 — Conector directo
-Pulsa **🔌 Conector** → elige actividad → se carga automáticamente, sin subir ningún archivo.
+Pulsa **🔌 Conector → ⚙** para introducir la URL de tu servidor, luego pulsa **🔌 Conector** → elige actividad → se carga automáticamente, sin subir ningún archivo.
 
-- Funciona desde **móvil y escritorio** — apunta por defecto al servidor Railway (siempre activo)
-- Si tienes el servidor corriendo localmente, configura el usuario en **⚙** para usar `localhost:8000`
+- Funciona desde **móvil y escritorio**
+- Requiere tener [garmin-coach-mcp](https://github.com/Alejandrlucena/garmin-coach-mcp) desplegado en Railway o corriendo en local
 - Solo muestra actividades con datos de splits (carrera, ciclismo, natación…); fuerza, yoga, etc. se ocultan automáticamente
 
 ### Opción 3 — JSON manual
@@ -91,7 +91,7 @@ Todas las imágenes incluyen la firma `by AlejandrLucena` en el pie.
 
 ## Configurar "Obtener link" (Google Drive)
 
-El botón **📤 Drive → ⚙** configura tu usuario. Si ya está registrado se conecta automáticamente; si no, te pide la URL del Apps Script.
+El botón **📤 Drive → ⚙** te pide la URL de tu propio Google Apps Script. Una vez guardada se conecta automáticamente en siguientes sesiones.
 
 ### Crear el Apps Script
 
