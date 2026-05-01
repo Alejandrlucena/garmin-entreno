@@ -3017,6 +3017,8 @@ function openConnectorPanel() {
     })
     .then(function(data) {
       var acts = data.activities || [];
+      var SIN_SPLITS = {strength_training:1, yoga:1, pilates:1, flexibility:1, breathwork:1, meditation:1};
+      acts = acts.filter(function(a) { return !SIN_SPLITS[a.activityType]; });
       if (!acts.length) {
         list.innerHTML = '<div style="text-align:center;padding:28px;color:#555;font-size:12px">No se encontraron actividades</div>';
         return;
