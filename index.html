@@ -558,6 +558,10 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
       <span style="font-size:13px;font-weight:700;color:#eaeaea">🔌 Actividades del conector</span>
       <button onclick="closeConnectorPanel()" style="background:none;border:none;color:#555;font-size:20px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
     </div>
+    <div id="connector-search-wrap" style="display:none;padding:8px 12px;border-bottom:1px solid #111318">
+      <input id="connector-search" type="search" placeholder="Buscar actividad…" oninput="_filterConnectorActivities()"
+        style="width:100%;box-sizing:border-box;background:#0c0d11;border:1px solid #1e2130;border-radius:8px;padding:7px 10px;font-size:12px;color:#d0d4de;outline:none;-webkit-appearance:none">
+    </div>
     <div id="connector-list" style="padding:4px 0;min-height:80px"></div>
   </div>
 </div>
@@ -572,9 +576,14 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
 
       <div style="margin-bottom:18px">
         <label style="display:block;font-size:11px;font-weight:700;color:#505870;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Nombre de usuario</label>
-        <input id="cfg-username" type="text" placeholder="tu nombre de usuario" autocomplete="off" autocorrect="off" autocapitalize="off"
-          style="width:100%;box-sizing:border-box;background:#0c0d11;border:1px solid #1e2130;border-radius:8px;padding:9px 12px;font-size:13px;color:#d0d4de;outline:none">
-        <div style="font-size:10px;color:#353a50;margin-top:4px">Alias local — solo para no tener que escribir la URL cada vez</div>
+        <div style="display:flex;gap:6px">
+          <input id="cfg-username" type="text" placeholder="tu nombre de usuario" autocomplete="off" autocorrect="off" autocapitalize="off"
+            list="cfg-username-list"
+            style="flex:1;min-width:0;background:#0c0d11;border:1px solid #1e2130;border-radius:8px;padding:9px 12px;font-size:13px;color:#d0d4de;outline:none">
+          <datalist id="cfg-username-list"></datalist>
+          <button id="cfg-import-btn" onclick="settingsImportUser()" style="background:#1a2035;border:1px solid #1e2130;border-radius:8px;padding:0 14px;font-size:11px;font-weight:700;color:#7aa2d4;cursor:pointer;white-space:nowrap">Importar</button>
+        </div>
+        <div style="font-size:10px;color:#353a50;margin-top:4px">Alias local — escribe tu nombre y pulsa <b style="color:#4a6a94">Importar</b> para cargar tu configuración guardada</div>
       </div>
 
       <div style="margin-bottom:6px">
@@ -3075,13 +3084,55 @@ function configureConnector() { openSettings(); }
   if (server) _loadConfigFromServer(server);
 })();
 
+var _connectorActs = [];
+var _CONNECTOR_TIPOS = {
+  treadmill_running:'Cinta', running:'Carrera', trail_running:'Trail',
+  cycling:'Ciclismo', swimming:'Natación', walking:'Caminar'
+};
+
+function _renderConnectorActs(acts) {
+  var list = document.getElementById('connector-list');
+  if (!acts.length) {
+    list.innerHTML = '<div style="text-align:center;padding:28px;color:#555;font-size:12px">Sin resultados</div>';
+    return;
+  }
+  list.innerHTML = acts.map(function(a) {
+    var name = a.activityName || 'Actividad';
+    var date = a.startTimeLocal ? a.startTimeLocal.slice(0, 10) : '';
+    var dist = a.distanceKm > 0 ? a.distanceKm.toFixed(2) + ' km' : '';
+    var dur  = a.durationMin > 0 ? Math.round(a.durationMin) + ' min' : '';
+    var type = _CONNECTOR_TIPOS[a.activityType] || (a.activityType || '');
+    var meta = [date, type, dist, dur].filter(Boolean).join(' · ');
+    return '<div onclick="loadActivityFromConnector(\'' + a.activityId + '\')"'
+      + ' style="padding:12px 18px;border-bottom:1px solid #111318;cursor:pointer;transition:background .12s"'
+      + ' onmouseover="this.style.background=\'#141620\'" onmouseout="this.style.background=\'transparent\'">'
+      + '<div style="font-size:13px;font-weight:600;color:#eaeaea;margin-bottom:3px">' + name + '</div>'
+      + '<div style="font-size:11px;color:#505870">' + meta + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function _filterConnectorActivities() {
+  var q = (document.getElementById('connector-search').value || '').trim().toLowerCase();
+  if (!q) { _renderConnectorActs(_connectorActs); return; }
+  var filtered = _connectorActs.filter(function(a) {
+    var name = (a.activityName || '').toLowerCase();
+    var type = (_CONNECTOR_TIPOS[a.activityType] || a.activityType || '').toLowerCase();
+    var date = (a.startTimeLocal || '').slice(0, 10);
+    return name.includes(q) || type.includes(q) || date.includes(q);
+  });
+  _renderConnectorActs(filtered);
+}
+
 function openConnectorPanel() {
   const overlay = document.getElementById('connector-overlay');
   const list = document.getElementById('connector-list');
+  const searchWrap = document.getElementById('connector-search-wrap');
   overlay.style.display = 'block';
 
   const base = _getConnectorUrl();
   if (!base) {
+    searchWrap.style.display = 'none';
     list.innerHTML = '<div style="padding:20px 18px;font-size:12px;color:#8890a0;line-height:1.9">'
       + '<b style="color:#eaeaea;font-size:13px">Conector no configurado</b><br><br>'
       + 'Pulsa <b style="color:#ccc">⚙ Configurar</b> e introduce:<br>'
@@ -3092,6 +3143,7 @@ function openConnectorPanel() {
       + 'o en local (<code style="color:#666">http://localhost:8000</code>).</span></div>';
     return;
   }
+  searchWrap.style.display = 'none';
   list.innerHTML = '<div style="text-align:center;padding:28px;color:#555;font-size:12px">Cargando actividades…</div>';
 
   fetch(base + '/activities?limit=30')
@@ -3100,38 +3152,19 @@ function openConnectorPanel() {
       return r.json();
     })
     .then(function(data) {
-      var acts = data.activities || [];
-      var SIN_SPLITS = {strength_training:1, yoga:1, pilates:1, flexibility:1, breathwork:1, meditation:1};
-      acts = acts.filter(function(a) { return !SIN_SPLITS[a.activityType]; });
-      if (!acts.length) {
+      var SIN_SPLITS = {strength_training:1,yoga:1,pilates:1,flexibility:1,breathwork:1,meditation:1};
+      _connectorActs = (data.activities || []).filter(function(a) { return !SIN_SPLITS[a.activityType]; });
+      if (!_connectorActs.length) {
         list.innerHTML = '<div style="text-align:center;padding:28px;color:#555;font-size:12px">No se encontraron actividades</div>';
         return;
       }
-      var TIPOS = {
-        treadmill_running: 'Cinta',
-        running: 'Carrera',
-        trail_running: 'Trail',
-        cycling: 'Ciclismo',
-        strength_training: 'Fuerza',
-        swimming: 'Natación',
-        walking: 'Caminar',
-      };
-      list.innerHTML = acts.map(function(a) {
-        var name = a.activityName || 'Actividad';
-        var date = a.startTimeLocal ? a.startTimeLocal.slice(0, 10) : '';
-        var dist = a.distanceKm > 0 ? a.distanceKm.toFixed(2) + ' km' : '';
-        var dur  = a.durationMin > 0 ? Math.round(a.durationMin) + ' min' : '';
-        var type = TIPOS[a.activityType] || (a.activityType || '');
-        var meta = [date, type, dist, dur].filter(Boolean).join(' · ');
-        return '<div onclick="loadActivityFromConnector(\'' + a.activityId + '\')"'
-          + ' style="padding:12px 18px;border-bottom:1px solid #111318;cursor:pointer;transition:background .12s"'
-          + ' onmouseover="this.style.background=\'#141620\'" onmouseout="this.style.background=\'transparent\'">'
-          + '<div style="font-size:13px;font-weight:600;color:#eaeaea;margin-bottom:3px">' + name + '</div>'
-          + '<div style="font-size:11px;color:#505870">' + meta + '</div>'
-          + '</div>';
-      }).join('');
+      var search = document.getElementById('connector-search');
+      if (search) search.value = '';
+      searchWrap.style.display = 'block';
+      _renderConnectorActs(_connectorActs);
     })
     .catch(function(err) {
+      searchWrap.style.display = 'none';
       list.innerHTML = '<div style="padding:16px 18px;color:#e74c3c;font-size:12px">'
         + 'Error al conectar: ' + err.message + '<br><br>'
         + '<span style="color:#505870">¿Está el servidor corriendo en <b style="color:#777">' + base + '</b>?<br>'
@@ -3223,9 +3256,49 @@ function openSettings() {
   document.getElementById('cfg-username').value = user;
   document.getElementById('cfg-server').value   = server;
   document.getElementById('cfg-drive').value    = drive;
+  // Poblar datalist con usuarios guardados
+  var dl = document.getElementById('cfg-username-list');
+  if (dl) {
+    var aliases = _getAliases();
+    dl.innerHTML = Object.keys(aliases).map(function(k) {
+      return '<option value="' + k + '">';
+    }).join('');
+  }
   document.getElementById('settings-overlay').style.display = 'block';
-  // Si hay servidor pero no drive, intentar cargar automáticamente
   if (server && !drive) settingsLoadFromServer(true);
+}
+
+function settingsImportUser() {
+  var username = document.getElementById('cfg-username').value.trim().toLowerCase();
+  var aliases  = _getAliases();
+  var keys     = Object.keys(aliases);
+
+  if (!username) {
+    if (!keys.length) { _toast('No hay usuarios guardados aún', 'info'); return; }
+    _toast('Usuarios guardados: ' + keys.join(', '), 'info');
+    return;
+  }
+
+  var server = aliases[username];
+  if (!server) {
+    var match = keys.find(function(k) { return k.includes(username) || username.includes(k); });
+    if (match) server = aliases[match];
+  }
+  if (!server) { _toast('Usuario "' + username + '" no encontrado. Introduce la URL manualmente.', 'info'); return; }
+
+  document.getElementById('cfg-server').value = server;
+  var btn = document.getElementById('cfg-import-btn');
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  _loadConfigFromServer(server).then(function(cfg) {
+    if (cfg.driveUrl) {
+      document.getElementById('cfg-drive').value = cfg.driveUrl;
+      _toast('✓ Configuración de "' + username + '" cargada.', 'ok');
+    } else {
+      _toast('Servidor cargado. Drive URL no configurado aún.', 'info');
+    }
+  }).finally(function() {
+    if (btn) { btn.textContent = 'Importar'; btn.disabled = false; }
+  });
 }
 
 function closeSettings() {
