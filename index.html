@@ -2946,33 +2946,92 @@ loadZones();
 })();
 
 /* ── CONECTOR GARMIN ── */
-const CONNECTOR_URL_KEY = 'garminConnectorUrl';
+const CONNECTOR_URL_KEY     = 'garminConnectorUrl';
+const CONNECTOR_ALIASES_KEY = 'garminConnectorAliases'; // {username: serverUrl}
+const CONNECTOR_USER_KEY    = 'garminConnectorUser';
 
 function _cleanConnectorUrl(raw) {
   return (raw || '').trim().replace(/\/(mcp|sse)\/?$/, '').replace(/\/$/, '');
+}
+
+function _getAliases() {
+  try { return JSON.parse(localStorage.getItem(CONNECTOR_ALIASES_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function _saveAlias(username, serverUrl) {
+  var aliases = _getAliases();
+  aliases[username.trim().toLowerCase()] = serverUrl;
+  localStorage.setItem(CONNECTOR_ALIASES_KEY, JSON.stringify(aliases));
 }
 
 function _getConnectorUrl() {
   return _cleanConnectorUrl(localStorage.getItem(CONNECTOR_URL_KEY) || '');
 }
 
+function _applyServer(serverUrl) {
+  localStorage.setItem(CONNECTOR_URL_KEY, serverUrl);
+  return _loadConfigFromServer(serverUrl).then(function(cfg) {
+    if (cfg.driveUrl) _toast('✓ Configuración cargada.', 'ok');
+    else _toast('Servidor guardado. Configura Drive en ⚙ si lo necesitas.', 'info');
+    return cfg;
+  });
+}
+
 function configureConnector() {
-  const currentUrl = _getConnectorUrl();
-  const url = prompt('URL de tu servidor Garmin MCP\n(ej: https://tuservicio.up.railway.app)\nVacío para borrar configuración:', currentUrl);
-  if (url === null) return;
-  const clean = _cleanConnectorUrl(url);
-  if (!clean) {
+  var currentUser = localStorage.getItem(CONNECTOR_USER_KEY) || '';
+  var currentUrl  = _getConnectorUrl();
+  var hint = currentUser || currentUrl || '';
+
+  var input = prompt(
+    'Usuario o URL del servidor Garmin MCP\n'
+    + '• Primera vez: pega la URL completa (https://…)\n'
+    + '• Veces siguientes: escribe tu nombre de usuario\n'
+    + '• Vacío para borrar configuración',
+    hint
+  );
+  if (input === null) return;
+  var val = input.trim();
+
+  if (!val) {
     localStorage.removeItem(CONNECTOR_URL_KEY);
+    localStorage.removeItem(CONNECTOR_USER_KEY);
     localStorage.removeItem(DRIVE_UPLOAD_URL_KEY);
     _toast('Configuración borrada.', 'info');
     return;
   }
-  localStorage.setItem(CONNECTOR_URL_KEY, clean);
-  // Cargar config del servidor automáticamente
-  _loadConfigFromServer(clean).then(function(cfg) {
-    if (cfg.driveUrl) _toast('✓ Configuración cargada desde el servidor.', 'ok');
-    else _toast('Servidor guardado. Configura Drive en ⚙ para completar.', 'info');
-  });
+
+  // ¿Es una URL?
+  if (val.startsWith('http://') || val.startsWith('https://')) {
+    var clean = _cleanConnectorUrl(val);
+    // Pedir alias para guardar (opcional)
+    var alias = prompt('¿Con qué nombre quieres guardar este servidor? (opcional, déjalo vacío para omitir):', currentUser || '');
+    if (alias && alias.trim()) {
+      var aliasClean = alias.trim().toLowerCase();
+      _saveAlias(aliasClean, clean);
+      localStorage.setItem(CONNECTOR_USER_KEY, aliasClean);
+    } else {
+      localStorage.removeItem(CONNECTOR_USER_KEY);
+    }
+    _applyServer(clean);
+    return;
+  }
+
+  // Es un nombre de usuario — buscar en aliases locales
+  var username = val.toLowerCase();
+  var aliases  = _getAliases();
+  if (aliases[username]) {
+    localStorage.setItem(CONNECTOR_USER_KEY, username);
+    _applyServer(aliases[username]);
+    return;
+  }
+
+  // Primera vez con ese nombre: pedir URL
+  var serverUrl = prompt('Primera vez con "' + val + '".\nPega la URL de tu servidor Garmin MCP:', '');
+  if (!serverUrl || !serverUrl.trim()) return;
+  var cleanUrl = _cleanConnectorUrl(serverUrl.trim());
+  _saveAlias(username, cleanUrl);
+  localStorage.setItem(CONNECTOR_USER_KEY, username);
+  _applyServer(cleanUrl);
 }
 
 // Al cargar la página, refrescar config desde el servidor si está configurado
@@ -2988,12 +3047,14 @@ function openConnectorPanel() {
 
   const base = _getConnectorUrl();
   if (!base) {
-    list.innerHTML = '<div style="padding:20px 18px;font-size:12px;color:#8890a0;line-height:1.7">'
+    list.innerHTML = '<div style="padding:20px 18px;font-size:12px;color:#8890a0;line-height:1.9">'
       + '<b style="color:#eaeaea;font-size:13px">Conector no configurado</b><br><br>'
-      + 'Pulsa <b style="color:#aaa">⚙ Configurar</b> e introduce la URL de tu servidor Garmin MCP.<br><br>'
-      + '<span style="color:#555">Necesitas tener <a href="https://github.com/Alejandrlucena/garmin-coach-mcp" '
+      + 'Pulsa <b style="color:#ccc">⚙ Configurar</b> e introduce:<br>'
+      + '· <b style="color:#aaa">Primera vez</b>: la URL de tu servidor + un nombre de usuario<br>'
+      + '· <b style="color:#aaa">Siguiente vez</b>: solo el nombre de usuario<br><br>'
+      + '<span style="color:#505870">Necesitas <a href="https://github.com/Alejandrlucena/garmin-coach-mcp" '
       + 'target="_blank" style="color:#4a6fa5">garmin-coach-mcp</a> desplegado en Railway '
-      + 'o corriendo en local (<code style="color:#666">http://localhost:8000</code>).</span></div>';
+      + 'o en local (<code style="color:#666">http://localhost:8000</code>).</span></div>';
     return;
   }
   list.innerHTML = '<div style="text-align:center;padding:28px;color:#555;font-size:12px">Cargando actividades…</div>';
