@@ -2126,7 +2126,7 @@ function openIOSave(blob, btn){
   p.innerHTML=isMobile?'Mantén pulsada la imagen → <strong style="color:#eaeaea">Guardar en Fotos</strong>'
                       :'<strong style="color:#eaeaea">Vista previa</strong>';
   const dl=document.createElement('a');
-  dl.href=url; dl.download='entreno.png';
+  dl.href=url; dl.download=captureFileBaseName()+'.png';
   dl.style.cssText='background:#1a3a2a;border:1px solid #2a5a3a;border-radius:8px;padding:9px 18px;'
     +'color:#6dbf8a;font-size:12px;font-weight:700;text-decoration:none';
   dl.textContent='Descargar';
@@ -2173,38 +2173,11 @@ function saveImg(){
   const btn=document.getElementById('btn-img');
   btn.textContent='Generando...';btn.disabled=true;
   _captureEl(canvas=>{
-    if(isIOS()){
-      let dataUrl='';
-      try{dataUrl=canvas.toDataURL('image/jpeg',0.92);}catch(e){
-        _toast('Imagen demasiado grande para Safari. Prueba con menos actividades.', 'error');
-        btn.textContent='Generar imagen';btn.disabled=false;return;
-      }
-      const win=window.open('','_blank');
-      if(win){
-        win.document.write(`<html><head>
-          <meta name="viewport" content="width=device-width,initial-scale=1">
-          <style>body{margin:0;background:#0b0c0f;display:flex;flex-direction:column;align-items:center;padding:20px;gap:12px;font-family:-apple-system,sans-serif;color:#9aa0a6}
-          p{font-size:13px;text-align:center;line-height:1.5}strong{color:#eaeaea}
-          img{max-width:100%;border-radius:8px;box-shadow:0 2px 20px rgba(0,0,0,.5)}</style>
-          </head><body>
-          <p>Mantén pulsada la imagen →<br><strong>Añadir a Fotos</strong></p>
-          <img src="${dataUrl}">
-          </body></html>`);
-        win.document.close();
-      } else {
-        _toast('Permite las ventanas emergentes en Safari para guardar la imagen.', 'error');
-      }
-    } else {
-      const link=document.createElement('a');
-      link.download=captureFileBaseName()+'.png';
-      link.href=canvas.toDataURL('image/png');
-      link.click();
-      _toast('✓ Imagen descargando', 'ok');
-      btn.textContent='✓ Generada';
-      setTimeout(()=>{btn.textContent='Generar imagen';btn.disabled=false;},2000);
-      return;
-    }
-    btn.textContent='Generar imagen';btn.disabled=false;
+    canvas.toBlob(blob=>{
+      btn.textContent='Generar imagen';btn.disabled=false;
+      if(!blob){_toast('Error generando imagen','error');return;}
+      openIOSave(blob,null);
+    },'image/png');
   });
 }
 
@@ -2390,7 +2363,7 @@ function copyImg(){
       canvas.toBlob(blob=>{
         if(!blob){btn.textContent='Copiar imagen';btn.disabled=false;_toast('Error generando imagen','error');return;}
         const ok=()=>{_toast('✓ Imagen copiada al portapapeles','ok');btn.textContent='✓ Copiada';setTimeout(()=>{btn.textContent='Copiar imagen';btn.disabled=false;},2500);};
-        const fail=()=>{openIOSave(blob,btn);};
+        const fail=()=>{btn.textContent='Copiar imagen';btn.disabled=false;_toast('No se pudo copiar. Usa "Generar imagen" para descargar.','error');};
         if(navigator.clipboard&&navigator.clipboard.write&&typeof ClipboardItem!=='undefined'){
           navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(ok).catch(fail);
         } else {
