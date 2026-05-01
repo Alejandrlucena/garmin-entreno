@@ -319,7 +319,7 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
 .action-bar{
   background:#080a0c;border-top:1px solid #141518;
   padding:10px 14px 12px;
-  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
   flex-shrink:0}
 .action-btn{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -374,10 +374,20 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
 .action-btn-split:hover .split-cfg-label{color:#5a6880}
 .split-cfg:hover .split-cfg-icon,
 .split-cfg:hover .split-cfg-label{color:#9aafcc}
-.action-btn-split.ab-drive  {border-bottom-color:#2e1f50}
-.action-btn-split.ab-connector{border-bottom-color:#0e3020}
-.action-btn-split.ab-drive:hover  {border-bottom-color:#6a4aaa}
-.action-btn-split.ab-connector:hover{border-bottom-color:#2a8a50}
+.action-btn-split.ab-zones-split{border-bottom-color:#3a2a0e}
+.action-btn-split.ab-zones-split:hover{border-bottom-color:#c07820}
+.action-btn-split.ab-share{border-bottom-color:#2a2550}
+.action-btn-split.ab-share:hover{border-bottom-color:#604aaa}
+/* ── DUAL main (Drive + Conector) ── */
+.split-dual{display:flex;flex-direction:row;width:100%;flex:1}
+.split-dual-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;padding:10px 4px 8px;
+  background:transparent;border:none;cursor:pointer;
+  transition:background .15s;-webkit-appearance:none;touch-action:manipulation;user-select:none}
+.split-dual-btn:hover{background:#111420}
+.split-dual-btn:active{opacity:.75}
+.split-dual-sep{width:1px;background:#161820;margin:8px 0;flex-shrink:0}
 
 /* legacy .prompt-toggle kept for hidden buttons */
 .prompt-toggle{display:none}
@@ -463,25 +473,28 @@ td:first-child:hover .hide-btn{opacity:1;color:#454a55}
     <span class="action-btn-icon">🌐</span>
     <span class="action-btn-label">Connect</span>
   </a>
-  <button class="action-btn ab-zones" onclick="toggleHRZones()">
-    <span class="action-btn-icon">⚡</span>
-    <span class="action-btn-label">Zonas FC</span>
-  </button>
-  <div class="action-btn-split ab-drive">
-    <button class="split-main" onclick="getImageLink()" id="btn-link-img-bar">
-      <span class="action-btn-icon">📤</span>
-      <span class="action-btn-label">Drive</span>
+  <div class="action-btn-split ab-zones-split">
+    <button class="split-main" onclick="toggleHRZones()">
+      <span class="action-btn-icon">⚡</span>
+      <span class="action-btn-label">Zonas FC</span>
     </button>
-    <button class="split-cfg" onclick="openSettings()">
+    <button class="split-cfg" onclick="openHRZonesConfig()">
       <span class="split-cfg-icon">⚙</span>
       <span class="split-cfg-label">Configurar</span>
     </button>
   </div>
-  <div class="action-btn-split ab-connector">
-    <button class="split-main" id="btn-connector" onclick="openConnectorPanel()">
-      <span class="action-btn-icon">🔌</span>
-      <span class="action-btn-label">Conector</span>
-    </button>
+  <div class="action-btn-split ab-share">
+    <div class="split-dual">
+      <button class="split-dual-btn" onclick="getImageLink()">
+        <span class="action-btn-icon">📤</span>
+        <span class="action-btn-label">Drive</span>
+      </button>
+      <div class="split-dual-sep"></div>
+      <button class="split-dual-btn" id="btn-connector" onclick="openConnectorPanel()">
+        <span class="action-btn-icon">🔌</span>
+        <span class="action-btn-label">Conector</span>
+      </button>
+    </div>
     <button class="split-cfg" onclick="openSettings()">
       <span class="split-cfg-icon">⚙</span>
       <span class="split-cfg-label">Configurar</span>
@@ -2730,6 +2743,10 @@ function copyPrompt(){
 /* ── CUSTOM HR ZONES ── */
 window.customHRZones = null;
 window.customHRZonesActive = false;
+
+function openHRZonesConfig() {
+  document.getElementById('hr-zones-content').style.display = 'block';
+}
 
 function toggleHRZones() {
   var content = document.getElementById('hr-zones-content');
