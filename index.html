@@ -900,7 +900,7 @@ function _cadCell(cad, cadPrev, isDesc){
     var d = cad - cadPrev;
     if(Math.abs(d) >= 0.1){
       var sign = d>0?'+':'-';
-      var cls = d>0?'dp':'dn';
+      var cls = d>0?'dn':'dp';
       if(isDesc){
         out += '<div class="sub '+cls+'" style="opacity:0.2">'+sign+Math.abs(d)+'</div>';
       }else{
