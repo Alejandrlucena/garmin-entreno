@@ -17,6 +17,7 @@ Pulsa **🔌 Conector → ⚙ Configurar** para introducir la URL de tu servidor
 - Funciona desde **móvil y escritorio**
 - Requiere tener [garmin-coach-mcp](https://github.com/Alejandrlucena/garmin-coach-mcp) desplegado en Railway o corriendo en local
 - Solo muestra actividades con datos de splits (carrera, ciclismo, natación…); fuerza, yoga, etc. se ocultan automáticamente
+- Usa los campos **Desde / Hasta** para filtrar por rango de fechas y acceder a cualquier actividad histórica (2017, 2018…); sin fechas muestra las 30 más recientes
 
 ### Opción 3 — JSON manual
 Pega el JSON de una actividad que te haya dado Claude o ChatGPT y pulsa **▶ Renderizar**.
