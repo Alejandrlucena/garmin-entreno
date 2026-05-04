@@ -3152,7 +3152,7 @@ function _matchAct(a, q) {
 
 function _filterConnectorActivities() {
   var q = (document.getElementById('connector-search').value || '').trim().toLowerCase();
-  if (!q) { _renderConnectorActs(_connectorActs); return; }
+  if (!q) { clearTimeout(_connectorSearchTimer); _renderConnectorActs(_connectorActs); return; }
 
   // Filtra lo cargado al instante
   var local = _connectorActs.filter(function(a) { return _matchAct(a, q); });
@@ -3178,7 +3178,7 @@ function _filterConnectorActivities() {
         _connectorBroadActs = (data.activities || []).filter(function(a) { return !SIN[a.activityType]; });
         _connectorBroadFetching = false;
         var currentQ = (document.getElementById('connector-search').value || '').trim().toLowerCase();
-        if (currentQ.length >= 3) {
+        if (currentQ.length >= 3 && currentQ === q) {
           var broad = _connectorBroadActs.filter(function(a) { return _matchAct(a, currentQ); });
           if (broad.length > (_connectorActs.filter(function(a){return _matchAct(a,currentQ);}).length))
             _renderConnectorActs(broad);
