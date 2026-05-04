@@ -3171,7 +3171,7 @@ function _filterConnectorActivities() {
     _connectorBroadFetching = true;
     var base = _getConnectorUrl();
     if (!base) return;
-    fetch(base + '/activities?limit=200')
+    fetch(base + '/activities?limit=500')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var SIN = {strength_training:1,yoga:1,pilates:1,flexibility:1,breathwork:1,meditation:1};
@@ -3219,7 +3219,7 @@ function _prefetchConnectorBroad() {
   var base = _getConnectorUrl();
   if (!base) return;
   _connectorBroadFetching = true;
-  fetch(base + '/activities?limit=200')
+  fetch(base + '/activities?limit=500')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var SIN = {strength_training:1,yoga:1,pilates:1,flexibility:1,breathwork:1,meditation:1};
