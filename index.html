@@ -3173,33 +3173,18 @@ function openConnectorPanel() {
     return;
   }
   if (dateWrap) dateWrap.style.display = 'flex';
-  searchWrap.style.display = 'none';
-  list.innerHTML = '<div style="text-align:center;padding:28px;color:#555;font-size:12px">Cargando actividades…</div>';
 
-  fetch(base + '/activities?limit=30')
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(data) {
-      var SIN_SPLITS = {strength_training:1,yoga:1,pilates:1,flexibility:1,breathwork:1,meditation:1};
-      _connectorActs = (data.activities || []).filter(function(a) { return !SIN_SPLITS[a.activityType]; });
-      if (!_connectorActs.length) {
-        list.innerHTML = '<div style="text-align:center;padding:28px;color:#555;font-size:12px">No se encontraron actividades</div>';
-        return;
-      }
-      var search = document.getElementById('connector-search');
-      if (search) search.value = '';
-      searchWrap.style.display = 'block';
-      _renderConnectorActs(_connectorActs);
-    })
-    .catch(function(err) {
-      searchWrap.style.display = 'none';
-      list.innerHTML = '<div style="padding:16px 18px;color:#e74c3c;font-size:12px">'
-        + 'Error al conectar: ' + err.message + '<br><br>'
-        + '<span style="color:#505870">¿Está el servidor corriendo en <b style="color:#777">' + base + '</b>?<br>'
-        + 'Usa ⚙ para cambiar la URL del conector.</span></div>';
-    });
+  // Pre-rellenar con los últimos 30 días si los campos están vacíos
+  var fromEl = document.getElementById('connector-date-from');
+  var toEl   = document.getElementById('connector-date-to');
+  if (fromEl && !fromEl.value) {
+    var today = new Date();
+    var ago30 = new Date(today); ago30.setDate(today.getDate() - 30);
+    toEl.value   = today.toISOString().slice(0, 10);
+    fromEl.value = ago30.toISOString().slice(0, 10);
+  }
+
+  _loadConnectorByDate();
 }
 
 function _loadConnectorByDate() {
