@@ -1,8 +1,8 @@
-# Garmin Entreno · by AlejandrLucena
+# Garmin Running · by AlejandrLucena
 
 Visualizador de entrenamientos de Garmin Connect. Carga un `.fit`/`.zip`, conéctate al servidor MCP o pega JSON — obtén una tabla desglosada por vueltas, zonas de FC y grupos de intervalos, lista para compartir como imagen.
 
-**Demo:** https://Alejandrlucena.github.io/garmin-entreno
+**Demo:** https://Alejandrlucena.github.io/garmin-running
 
 ---
 
