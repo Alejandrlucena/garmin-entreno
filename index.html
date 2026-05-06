@@ -1009,10 +1009,10 @@ function renderActividad(d){
   _distributeZones(warmup,zonas,fcMinAll,fcMaxAll,fcRangeAll);
   _distributeZones(cooldown,zonas,fcMinAll,fcMaxAll,fcRangeAll);
 
-  // Pill: max FC only on active series
+  // Pill: max FC across all series including rest laps
   var activeSer=seriesArr.filter(function(s){return!_isDescanso(s);});
-  var maxFCxVal=activeSer.length?Math.max.apply(null,activeSer.map(function(s){return s.fc_max;})):0;
-  var maxHRIdx=maxFCxVal>0?seriesArr.findIndex(function(s){return!_isDescanso(s)&&s.fc_max===maxFCxVal;}):-1;
+  var maxFCxVal=seriesArr.length?Math.max.apply(null,seriesArr.map(function(s){return s.fc_max||0;})):0;
+  var maxHRIdx=maxFCxVal>0?seriesArr.findIndex(function(s){return s.fc_max===maxFCxVal;}):-1;
 
 var allR=[];
   if(warmup)allR.push(warmup);
@@ -1089,7 +1089,7 @@ var allR=[];
     _cumTimeSecs+=_thisDur;
     var _ct=_cumTimeSecs;
     var _cumDisplay=Math.abs(_ct-_thisDur)<0.05?secsToStepStr(_ct):secsToStr(_ct);
-    var isPillByVal=s.fc_max>0&&s.fc_max===maxFCxVal&&!isDesc;
+    var isPillByVal=s.fc_max>0&&s.fc_max===maxFCxVal;
     var fcmaxVal=isPillByVal?'<span class="fc-max-pill">'+s.fc_max+'</span>':''+s.fc_max;
     var lbl=s.label||'—';
     // Show duration if NOT a simple number (continuous run = just "1", "2", etc.)
