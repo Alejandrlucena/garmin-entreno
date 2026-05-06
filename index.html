@@ -1009,12 +1009,10 @@ function renderActividad(d){
   _distributeZones(warmup,zonas,fcMinAll,fcMaxAll,fcRangeAll);
   _distributeZones(cooldown,zonas,fcMinAll,fcMaxAll,fcRangeAll);
 
-  // Pill: active lap effective fc_max = max(own, following rest lap)
-  // Pill shows on the run row with the combined peak; rest rows show own value, no pill
+  // Pill: global max FC across all series (active + rest); pill appears on any lap matching it
   var activeSer=seriesArr.filter(function(s){return!_isDescanso(s);});
-  var fcMaxEffective=new Map();seriesArr.forEach(function(s,i){if(!_isDescanso(s)){var nxt=i+1<seriesArr.length?seriesArr[i+1]:null;fcMaxEffective.set(s,Math.max(s.fc_max||0,nxt&&_isDescanso(nxt)?(nxt.fc_max||0):0));}});
-  var maxFCxVal=activeSer.length?Math.max.apply(null,activeSer.map(function(s){return fcMaxEffective.get(s)||0;})):0;
-  var maxHRIdx=maxFCxVal>0?activeSer.findIndex(function(s){return(fcMaxEffective.get(s)||0)===maxFCxVal;}):-1;
+  var maxFCxVal=seriesArr.length?Math.max.apply(null,seriesArr.map(function(s){return s.fc_max||0;})):0;
+  var maxHRIdx=maxFCxVal>0?seriesArr.findIndex(function(s){return s.fc_max===maxFCxVal;}):-1;
 
 var allR=[];
   if(warmup)allR.push(warmup);
@@ -1091,9 +1089,8 @@ var allR=[];
     _cumTimeSecs+=_thisDur;
     var _ct=_cumTimeSecs;
     var _cumDisplay=Math.abs(_ct-_thisDur)<0.05?secsToStepStr(_ct):secsToStr(_ct);
-    var _effMax=isDesc?0:(fcMaxEffective.get(s)||0);
-    var isPillByVal=_effMax>0&&_effMax===maxFCxVal;
-    var fcmaxVal=s.fc_max>0?(isPillByVal?'<span class="fc-max-pill">'+_effMax+'</span>':s.fc_max):'';
+    var isPillByVal=s.fc_max>0&&s.fc_max===maxFCxVal;
+    var fcmaxVal=s.fc_max>0?(isPillByVal?'<span class="fc-max-pill">'+s.fc_max+'</span>':s.fc_max):'';
     var lbl=s.label||'—';
     // Show duration if NOT a simple number (continuous run = just "1", "2", etc.)
     // In intervalos mode, duration goes in its own column so skip from label
@@ -1318,6 +1315,7 @@ var allR=[];
       }
       // interval group
       var syn=_synthLap(g.activeLaps,'Carrera');
+      var _gAllFCx=g.laps.filter(function(l){return l.fc_max>0;});if(_gAllFCx.length)syn.fc_max=Math.max.apply(null,_gAllFCx.map(function(l){return l.fc_max;}));
       syn.vuelta=_rangeFromRows(g.laps);
       var zonaSyn=_synthLap(g.laps,'');
       rows+=_summaryRow(syn,'group-header','Carrera',_cumTimeSecs+(syn.dur_raw_secs||syn.dur_secs||0),zonaSyn.zonas_lap,lastGroupSyn);
