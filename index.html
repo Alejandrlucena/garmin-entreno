@@ -680,8 +680,8 @@ const toRitmo=s=>{
   return m+':'+(sc<10?'0':'')+sc;
 };
 const ritmoSecs=s=>(!s||s<=0)?0:1000/s;
-const secsToStr=t=>{if(!t||t<=0||!isFinite(t))return'';const m=Math.floor(t/60),s=Math.round(t%60);return m+':'+(s<10?'0':'')+s};
-const secsToStepStr=t=>{if(!t||t<=0||!isFinite(t))return'—';let v=Math.round(t*10)/10,m=Math.floor(v/60),s=v-m*60;if(Math.abs(s-60)<0.05){m++;s=0}let whole=Math.abs(s-Math.round(s))<0.05;if(whole){s=Math.round(s);return m+':'+(s<10?'0':'')+s}let txt=s.toFixed(1).replace('.',',');if(s<10)txt='0'+txt;return m+':'+txt};
+const secsToStr=t=>{if(!t||t<=0||!isFinite(t))return'';const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=Math.round(t%60);return h>0?h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s:m+':'+(s<10?'0':'')+s};
+const secsToStepStr=t=>{if(!t||t<=0||!isFinite(t))return'—';let v=Math.round(t*10)/10,h=Math.floor(v/3600),m=Math.floor((v%3600)/60),s=v-h*3600-m*60;if(Math.abs(s-60)<0.05){m++;s=0}if(m>=60){h++;m=0}let whole=Math.abs(s-Math.round(s))<0.05;let pfx=h>0?h+':'+(m<10?'0':'')+m+':':m+':';if(whole){s=Math.round(s);return pfx+(s<10?'0':'')+s}let txt=s.toFixed(1).replace('.',',');if(s<10)txt='0'+txt;return pfx+txt};
 const avg=(arr,fn)=>arr.length?arr.reduce((a,r)=>a+fn(r),0)/arr.length:0;
 
 // Garmin Connect zone colors (fixed by zone number, not by name)
